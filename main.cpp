@@ -20,7 +20,7 @@ extern "C" {
 #define FIELD_HEIGHT 450
 #define FIELD_X 100
 #define FIELD_Y 75
-#define SNAKE_LENGTH 1
+#define SNAKE_LENGTH 10
 #define MAX_SNAKE_LENGTH 100
 
 #define UP 0
@@ -34,7 +34,8 @@ extern "C" {
 #define SNAKE_SPEED 0.1 // Snake speed in sec
 
 struct Snake {
-    SDL_Rect head;
+	SDL_Rect segments[MAX_SNAKE_LENGTH];
+    int length;
     int direction;
 };
 
@@ -65,6 +66,17 @@ bool initialize_SDL(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Surface*& 
         SCREEN_WIDTH, SCREEN_HEIGHT);
 
     return true;
+}
+
+void initialize_snake(Snake& snake) {
+    snake.length = SNAKE_LENGTH;
+    snake.direction = UP;
+    for (int i = 0; i < snake.length; i++) {
+        snake.segments[i].x = SCREEN_WIDTH / 2;
+        snake.segments[i].y = SCREEN_HEIGHT / 2 + 15 + i * 12;
+        snake.segments[i].w = 12;
+        snake.segments[i].h = 12;
+    }
 }
 
 bool load_charset(SDL_Surface*& charset, SDL_Surface* screen, SDL_Texture* scrtex, SDL_Window* window, SDL_Renderer* renderer) {
@@ -108,6 +120,24 @@ void display_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielo
     DrawString(screen, screen->w / 2 - strlen(text) * 8 / 2, 42, text, charset);
 }
 
+void lose_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielony, Uint32 niebieski) {
+    int rectWidth = 300;
+    int rectHeight = 50;
+    int rectX = SCREEN_WIDTH / 2 - rectWidth / 2;
+    int rectY = SCREEN_HEIGHT / 2 - rectHeight / 2;
+
+    DrawRectangle(screen, rectX, rectY, rectWidth, rectHeight, zielony, niebieski);
+
+    const char* gameOverText = "GAME OVER";
+    const char* infoText = "Wyjscie - Esc, Nowa gra - 'n'";
+
+    int gameOverTextWidth = strlen(gameOverText) * 8;
+    int infoTextWidth = strlen(infoText) * 8;
+
+    DrawString(screen, rectX + (rectWidth - gameOverTextWidth) / 2, rectY + 10, gameOverText, charset);
+    DrawString(screen, rectX + (rectWidth - infoTextWidth) / 2, rectY + 30, infoText, charset);
+}
+
 void display_new_game(SDL_Surface* screen, SDL_Surface* charset, double& newGameTimer, double delta) {
     if (newGameTimer > 0) {
         DrawString(screen, SCREEN_WIDTH / 2 - 4 * 8, SCREEN_HEIGHT / 2 - 8, "New game", charset);
@@ -121,24 +151,31 @@ void reset_game(double& worldTime, int& frames, double& fpsTimer, double& fps, d
     fpsTimer = 0;
     fps = 0;
     newGameTimer = NEW_GAME_TIME;
-    snake.head.x = SCREEN_WIDTH / 2;
-    snake.head.y = SCREEN_HEIGHT / 2 + 15;
+    snake.length = SNAKE_LENGTH;
     snake.direction = UP;
+    for (int i = 0; i < snake.length; i++) {
+        snake.segments[i].x = SCREEN_WIDTH / 2;
+        snake.segments[i].y = SCREEN_HEIGHT / 2 + 15 + i * 12;
+        snake.segments[i].w = 12;
+        snake.segments[i].h = 12;
+    }
 }
 
-void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_Surface* screen, Uint32 jasny_niebieski, Uint32 zielony, double& fpsTimer, int& frames, double& fps) {
+void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_Surface* screen, Uint32 jasny_niebieski, Uint32 zielony, double& fpsTimer, int& frames, double& fps, bool& gameOver) {
     t2 = SDL_GetTicks();
 
     delta = (t2 - t1) * 0.001;
     t1 = t2;
 
-    worldTime += delta;
+    if (!gameOver) {
+        worldTime += delta;
+        fpsTimer += delta;
+    }
 
     SDL_FillRect(screen, NULL, jasny_niebieski);
 
     draw_game_field(screen, zielony);
 
-    fpsTimer += delta;
     if (fpsTimer > 0.5) {
         fps = frames * 2;
         frames = 0;
@@ -151,30 +188,47 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
     if (snakeTimer >= SNAKE_SPEED) {
         snakeTimer = 0;
 
-        // Aktualizacja pozycji wê¿a
+        // Przesuniêcie segmentów cia³a
+        for (int i = snake.length - 1; i > 0; i--) {
+            snake.segments[i] = snake.segments[i - 1];
+        }
+
+        // Aktualizacja pozycji g³owy wê¿a
         switch (snake.direction) {
         case UP:
-            snake.head.y -= 10;
+            snake.segments[0].y -= 12;
             break;
         case DOWN:
-            snake.head.y += 10;
+            snake.segments[0].y += 12;
             break;
         case LEFT:
-            snake.head.x -= 10;
+            snake.segments[0].x -= 12;
             break;
         case RIGHT:
-            snake.head.x += 10;
+            snake.segments[0].x += 12;
             break;
         }
     }
 
-    // Rysowanie g³owy wê¿a na powierzchni
-    SDL_FillRect(screen, &snake.head, color);
+    // Rysowanie segmentów cia³a wê¿a na powierzchni
+    for (int i = 0; i < snake.length; i++) {
+        SDL_FillRect(screen, &snake.segments[i], color);
+    }
+}
+
+void snake_collision(Snake& snake, bool& gameOver) {
+    //kolizja z cia³em
+    for (int i = 1; i < snake.length; i++) {
+        if (snake.segments[0].x == snake.segments[i].x && snake.segments[0].y == snake.segments[i].y) {
+            gameOver = true;
+        }
+    }
 }
 
 #ifdef __cplusplus
 extern "C"
 #endif
+
 int main(int argc, char** argv) {
     int t1, t2, quit, frames, points = 0;
     double delta, worldTime, fpsTimer, fps, newGameTimer, snakeTimer = 0;
@@ -185,7 +239,8 @@ int main(int argc, char** argv) {
     SDL_Surface* screen;
     SDL_Surface* charset;
     SDL_Texture* scrtex;
-    Snake snake = { {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 15, 15, 15}, UP };
+    Snake snake;
+    bool gameOver = false;
 
     printf("SKIBIDI\n");
 
@@ -208,10 +263,18 @@ int main(int argc, char** argv) {
     worldTime = 0;
     newGameTimer = 0;
 
-    while (!quit) {
-        update_game_state(t1, t2, delta, worldTime, screen, jasny_niebieski, zielony, fpsTimer, frames, fps);
+	initialize_snake(snake);
 
-        update_and_draw_snake(snake, snakeTimer, delta, screen, fioletowy);
+    while (!quit) {
+        update_game_state(t1, t2, delta, worldTime, screen, jasny_niebieski, zielony, fpsTimer, frames, fps, gameOver);
+
+        if (!gameOver) {
+            update_and_draw_snake(snake, snakeTimer, delta, screen, fioletowy);
+            snake_collision(snake, gameOver);
+        }
+        else {
+            lose_information(screen, charset, zielony, niebieski);
+        };
 
         // Tekst informacyjny
         display_information(screen, charset, zielony, niebieski, worldTime, fps, points);
@@ -229,19 +292,20 @@ int main(int argc, char** argv) {
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == SDLK_ESCAPE)
                     quit = 1;
-                else if (event.key.keysym.sym == SDLK_UP) {
+                else if (event.key.keysym.sym == SDLK_UP && snake.direction != DOWN) {
                     snake.direction = UP;
                 }
-                else if (event.key.keysym.sym == SDLK_DOWN) {
+                else if (event.key.keysym.sym == SDLK_DOWN && snake.direction != UP) {
                     snake.direction = DOWN;
                 }
-                else if (event.key.keysym.sym == SDLK_LEFT) {
+                else if (event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT) {
                     snake.direction = LEFT;
                 }
-                else if (event.key.keysym.sym == SDLK_RIGHT) {
+                else if (event.key.keysym.sym == SDLK_RIGHT && snake.direction != LEFT) {
                     snake.direction = RIGHT;
                 }
                 else if (event.key.keysym.sym == SDLK_n) {
+					gameOver = false;
                     reset_game(worldTime, frames, fpsTimer, fps, newGameTimer, snake);
                 }
                 break;
