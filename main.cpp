@@ -14,24 +14,44 @@ extern "C" {
 #include "./SDL2-2.0.10/include/SDL_main.h"
 }
 
+//Board defines
 #define SCREEN_WIDTH 850
 #define SCREEN_HEIGHT 550
 #define FIELD_WIDTH 650
 #define FIELD_HEIGHT 450
 #define FIELD_X 100
 #define FIELD_Y 75
+
+//Snake defines
 #define SNAKE_LENGTH 10
 #define MAX_SNAKE_LENGTH 100
+#define SNAKE_SPEED 0.1 // Snake speed in sec
+#define SNAKE_X SCREEN_WIDTH / 2
+#define SNAKE_Y SCREEN_HEIGHT / 2 + 15
+#define SNAKE_WIDTH 12
 
+//directions
 #define UP 0
 #define DOWN 1
 #define LEFT 2
 #define RIGHT 3
 
+//Additional information board defines
 #define INFO_TEXT_WIDTH SCREEN_WIDTH - 8
 #define INFO_TEXT_HEIGHT 54
+#define INFO_TEXT_X 4
+#define INFO_TEXT_Y 4
+
+//Lose information board defines
+#define LOSE_INFO_X SCREEN_WIDTH / 2 - LOSE_INFO_WIDTH / 2
+#define LOSE_INFO_Y SCREEN_HEIGHT / 2 - LOSE_INFO_HEIGHT / 2
+#define LOSE_INFO_WIDTH 300
+#define LOSE_INFO_HEIGHT 50
+
+//New game text defines
 #define NEW_GAME_TIME 1
-#define SNAKE_SPEED 0.1 // Snake speed in sec
+#define NEW_GAME_X SCREEN_WIDTH / 2 - 4 * 8
+#define NEW_GAME_Y SCREEN_HEIGHT / 2 - 8
 
 struct Snake {
 	SDL_Rect segments[MAX_SNAKE_LENGTH];
@@ -72,10 +92,10 @@ void initialize_snake(Snake& snake) {
     snake.length = SNAKE_LENGTH;
     snake.direction = UP;
     for (int i = 0; i < snake.length; i++) {
-        snake.segments[i].x = SCREEN_WIDTH / 2;
-        snake.segments[i].y = SCREEN_HEIGHT / 2 + 15 + i * 12;
-        snake.segments[i].w = 12;
-        snake.segments[i].h = 12;
+        snake.segments[i].x = SNAKE_X;
+        snake.segments[i].y = SNAKE_Y + i * SNAKE_WIDTH;
+        snake.segments[i].w = SNAKE_WIDTH;
+        snake.segments[i].h = SNAKE_WIDTH;
     }
 }
 
@@ -101,7 +121,7 @@ void create_colors(SDL_Surface* screen, Uint32& czarny, Uint32& zielony, Uint32&
     niebieski = SDL_MapRGB(screen->format, 0x11, 0x11, 0xCC);
     bialy = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
     jasny_niebieski = SDL_MapRGB(screen->format, 110, 149, 255);
-    fioletowy = SDL_MapRGB(screen->format, 217, 72, 239);
+    fioletowy = SDL_MapRGB(screen->format, 139, 44, 168);
 }
 
 void draw_game_field(SDL_Surface* screen, Uint32 color) {
@@ -111,7 +131,7 @@ void draw_game_field(SDL_Surface* screen, Uint32 color) {
 
 void display_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielony, Uint32 niebieski, double worldTime, double fps, int points) {
     char text[128];
-    DrawRectangle(screen, 4, 4, INFO_TEXT_WIDTH, INFO_TEXT_HEIGHT, zielony, niebieski);
+    DrawRectangle(screen, INFO_TEXT_X, INFO_TEXT_Y, INFO_TEXT_WIDTH, INFO_TEXT_HEIGHT, zielony, niebieski);
     sprintf(text, "Liczba punktow = %d  czas trwania = %.1lf s  %.0lf klatek / s", points, worldTime, fps);
     DrawString(screen, screen->w / 2 - strlen(text) * 8 / 2, 10, text, charset);
     sprintf(text, "Esc - wyjscie, 'n' - nowa gra");
@@ -121,12 +141,8 @@ void display_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielo
 }
 
 void lose_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielony, Uint32 niebieski) {
-    int rectWidth = 300;
-    int rectHeight = 50;
-    int rectX = SCREEN_WIDTH / 2 - rectWidth / 2;
-    int rectY = SCREEN_HEIGHT / 2 - rectHeight / 2;
 
-    DrawRectangle(screen, rectX, rectY, rectWidth, rectHeight, zielony, niebieski);
+    DrawRectangle(screen, LOSE_INFO_X, LOSE_INFO_Y, LOSE_INFO_WIDTH, LOSE_INFO_HEIGHT, zielony, niebieski);
 
     const char* gameOverText = "GAME OVER";
     const char* infoText = "Wyjscie - Esc, Nowa gra - 'n'";
@@ -134,13 +150,13 @@ void lose_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielony,
     int gameOverTextWidth = strlen(gameOverText) * 8;
     int infoTextWidth = strlen(infoText) * 8;
 
-    DrawString(screen, rectX + (rectWidth - gameOverTextWidth) / 2, rectY + 10, gameOverText, charset);
-    DrawString(screen, rectX + (rectWidth - infoTextWidth) / 2, rectY + 30, infoText, charset);
+    DrawString(screen, LOSE_INFO_X + (LOSE_INFO_WIDTH - gameOverTextWidth) / 2, LOSE_INFO_Y + 10, gameOverText, charset);
+    DrawString(screen, LOSE_INFO_X + (LOSE_INFO_WIDTH - infoTextWidth) / 2, LOSE_INFO_Y + 30, infoText, charset);
 }
 
 void display_new_game(SDL_Surface* screen, SDL_Surface* charset, double& newGameTimer, double delta) {
     if (newGameTimer > 0) {
-        DrawString(screen, SCREEN_WIDTH / 2 - 4 * 8, SCREEN_HEIGHT / 2 - 8, "New game", charset);
+        DrawString(screen, NEW_GAME_X, NEW_GAME_Y, "New game", charset);
         newGameTimer -= delta;
     }
 }
@@ -151,14 +167,7 @@ void reset_game(double& worldTime, int& frames, double& fpsTimer, double& fps, d
     fpsTimer = 0;
     fps = 0;
     newGameTimer = NEW_GAME_TIME;
-    snake.length = SNAKE_LENGTH;
-    snake.direction = UP;
-    for (int i = 0; i < snake.length; i++) {
-        snake.segments[i].x = SCREEN_WIDTH / 2;
-        snake.segments[i].y = SCREEN_HEIGHT / 2 + 15 + i * 12;
-        snake.segments[i].w = 12;
-        snake.segments[i].h = 12;
-    }
+	initialize_snake(snake);
 }
 
 void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_Surface* screen, Uint32 jasny_niebieski, Uint32 zielony, double& fpsTimer, int& frames, double& fps, bool& gameOver) {
@@ -217,7 +226,7 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
 }
 
 void snake_collision(Snake& snake, bool& gameOver) {
-    //kolizja z cia³em
+    //collision with body
     for (int i = 1; i < snake.length; i++) {
         if (snake.segments[0].x == snake.segments[i].x && snake.segments[0].y == snake.segments[i].y) {
             gameOver = true;
