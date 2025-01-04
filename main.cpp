@@ -18,7 +18,7 @@ extern "C" {
 #define SCREEN_WIDTH 850
 #define SCREEN_HEIGHT 550
 #define FIELD_WIDTH 650
-#define FIELD_HEIGHT 450
+#define FIELD_HEIGHT 455
 #define FIELD_X 100
 #define FIELD_Y 75
 
@@ -96,6 +96,64 @@ void initialize_snake(Snake& snake) {
         snake.segments[i].y = SNAKE_Y + i * SNAKE_WIDTH;
         snake.segments[i].w = SNAKE_WIDTH;
         snake.segments[i].h = SNAKE_WIDTH;
+    }
+}
+
+void turn_snake_right(Snake& snake) {
+    switch (snake.direction) {
+    case UP:
+        snake.direction = RIGHT;
+        break;
+    case RIGHT:
+        snake.direction = DOWN;
+        break;
+    case DOWN:
+        snake.direction = LEFT;
+        break;
+    case LEFT:
+        snake.direction = UP;
+        break;
+    }
+}
+
+void turn_snake_left(Snake& snake) {
+    switch (snake.direction) {
+    case UP:
+        snake.direction = LEFT;
+        break;
+    case LEFT:
+        snake.direction = DOWN;
+        break;
+    case DOWN:
+        snake.direction = RIGHT;
+        break;
+    case RIGHT:
+        snake.direction = UP;
+        break;
+    }
+}
+
+bool will_hit_wall(Snake& snake) {
+    switch (snake.direction) {
+    case UP:
+        return snake.segments[0].y < FIELD_Y;
+    case DOWN:
+        return snake.segments[0].y >= FIELD_Y + FIELD_HEIGHT - SNAKE_WIDTH;
+    case LEFT:
+        return snake.segments[0].x < FIELD_X + SNAKE_WIDTH;
+    case RIGHT:
+        return snake.segments[0].x >= FIELD_X + FIELD_WIDTH - 2 * SNAKE_WIDTH;
+    }
+    return false;
+}
+
+void check_snake_bounds(Snake& snake) {
+    if (will_hit_wall(snake)) {
+        turn_snake_right(snake);
+        if (will_hit_wall(snake)) {
+            turn_snake_left(snake);
+            turn_snake_left(snake);
+        }
     }
 }
 
@@ -202,19 +260,22 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
             snake.segments[i] = snake.segments[i - 1];
         }
 
+        // Sprawdzenie, czy w¹¿ nie wyjedzie poza granice pola
+        check_snake_bounds(snake);
+
         // Aktualizacja pozycji g³owy wê¿a
         switch (snake.direction) {
         case UP:
-            snake.segments[0].y -= 12;
+            snake.segments[0].y -= SNAKE_WIDTH;
             break;
         case DOWN:
-            snake.segments[0].y += 12;
+            snake.segments[0].y += SNAKE_WIDTH;
             break;
         case LEFT:
-            snake.segments[0].x -= 12;
+            snake.segments[0].x -= SNAKE_WIDTH;
             break;
         case RIGHT:
-            snake.segments[0].x += 12;
+            snake.segments[0].x += SNAKE_WIDTH;
             break;
         }
     }
@@ -301,20 +362,20 @@ int main(int argc, char** argv) {
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == SDLK_ESCAPE)
                     quit = 1;
-                else if (event.key.keysym.sym == SDLK_UP && snake.direction != DOWN) {
+                else if (event.key.keysym.sym == SDLK_UP && snake.direction != DOWN && snake.segments[0].y >= FIELD_Y) {
                     snake.direction = UP;
                 }
-                else if (event.key.keysym.sym == SDLK_DOWN && snake.direction != UP) {
+                else if (event.key.keysym.sym == SDLK_DOWN && snake.direction != UP && snake.segments[0].y < FIELD_Y + FIELD_HEIGHT - SNAKE_WIDTH) {
                     snake.direction = DOWN;
                 }
-                else if (event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT) {
+                else if (event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT && snake.segments[0].x >= FIELD_X + SNAKE_WIDTH) {
                     snake.direction = LEFT;
                 }
-                else if (event.key.keysym.sym == SDLK_RIGHT && snake.direction != LEFT) {
+                else if (event.key.keysym.sym == SDLK_RIGHT && snake.direction != LEFT && snake.segments[0].x < FIELD_X + FIELD_WIDTH - 2 * SNAKE_WIDTH) {
                     snake.direction = RIGHT;
                 }
                 else if (event.key.keysym.sym == SDLK_n) {
-					gameOver = false;
+                    gameOver = false;
                     reset_game(worldTime, frames, fpsTimer, fps, newGameTimer, snake);
                 }
                 break;
