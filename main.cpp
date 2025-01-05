@@ -48,16 +48,16 @@ extern "C" {
 #define NEW_GAME_Y SCREEN_HEIGHT / 2 - 8
 
 const enum Direction {
-    UP = 0,
-    DOWN = 1,
-    LEFT = 2,
-    RIGHT = 3
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT
 };
 
 struct Snake {
 	SDL_Rect segments[MAX_SNAKE_LENGTH];
     int length;
-    int direction;
+    Direction direction;
 };
 
 bool initialize_SDL(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Surface*& screen, SDL_Texture*& scrtex) {
