@@ -30,12 +30,6 @@ extern "C" {
 #define SNAKE_Y SCREEN_HEIGHT / 2 + 15
 #define SNAKE_WIDTH 12
 
-//directions
-#define UP 0
-#define DOWN 1
-#define LEFT 2
-#define RIGHT 3
-
 //Additional information board defines
 #define INFO_TEXT_WIDTH SCREEN_WIDTH - 8
 #define INFO_TEXT_HEIGHT 54
@@ -52,6 +46,13 @@ extern "C" {
 #define NEW_GAME_TIME 1
 #define NEW_GAME_X SCREEN_WIDTH / 2 - 4 * 8
 #define NEW_GAME_Y SCREEN_HEIGHT / 2 - 8
+
+const enum Direction {
+    UP = 0,
+    DOWN = 1,
+    LEFT = 2,
+    RIGHT = 3
+};
 
 struct Snake {
 	SDL_Rect segments[MAX_SNAKE_LENGTH];
