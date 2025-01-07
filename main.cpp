@@ -17,37 +17,36 @@ extern "C" {
 #define UNIT_WIDTH 25
 
 //Board defines in units
-#define SCREEN_WIDTH 850
-#define SCREEN_HEIGHT 550
-#define FIELD_WIDTH 650
-#define FIELD_HEIGHT 450
-#define FIELD_X 100
-#define FIELD_Y 75
+#define SCREEN_WIDTH 34
+#define SCREEN_HEIGHT 22
+#define FIELD_WIDTH 26
+#define FIELD_HEIGHT 18
+#define FIELD_X 4
+#define FIELD_Y 3
 
-//Snake defines
-#define SNAKE_LENGTH 10
+//Snake defines in units
+#define SNAKE_LENGTH 7
 #define MAX_SNAKE_LENGTH 100
 #define SNAKE_SPEED 0.1 // Snake speed in sec
-#define SNAKE_X SNAKE_WIDTH * 16
-#define SNAKE_Y SNAKE_WIDTH * 10
-#define SNAKE_WIDTH 25
+#define SNAKE_X 12
+#define SNAKE_Y 10
 
 //Additional information board defines
-#define INFO_TEXT_WIDTH SCREEN_WIDTH - 8
+#define INFO_TEXT_WIDTH 842
 #define INFO_TEXT_HEIGHT 54
 #define INFO_TEXT_X 4
 #define INFO_TEXT_Y 4
 
 //Lose information board defines
-#define LOSE_INFO_X SCREEN_WIDTH / 2 - LOSE_INFO_WIDTH / 2
-#define LOSE_INFO_Y SCREEN_HEIGHT / 2 - LOSE_INFO_HEIGHT / 2
+#define LOSE_INFO_X 275
+#define LOSE_INFO_Y 248
 #define LOSE_INFO_WIDTH 300
 #define LOSE_INFO_HEIGHT 50
 
 //New game text defines
 #define NEW_GAME_TIME 1
-#define NEW_GAME_X SCREEN_WIDTH / 2 - 4 * 8
-#define NEW_GAME_Y SCREEN_HEIGHT / 2 - 8
+#define NEW_GAME_X 393
+#define NEW_GAME_Y 267
 
 const enum Direction {
     UP,
@@ -57,7 +56,8 @@ const enum Direction {
 };
 
 struct Snake {
-	SDL_Rect segments[MAX_SNAKE_LENGTH];
+	//Array of snake segments storing unit x [0] and unit y [1] coordinates
+	int segments[MAX_SNAKE_LENGTH][2];
     int length;
     Direction direction;
 };
@@ -68,7 +68,7 @@ bool initialize_SDL(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Surface*& 
         return false;
     }
 
-    int rc = SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, 0, &window, &renderer);
+    int rc = SDL_CreateWindowAndRenderer(SCREEN_WIDTH * UNIT_WIDTH, SCREEN_HEIGHT * UNIT_WIDTH, 0, &window, &renderer);
     if (rc != 0) {
         SDL_Quit();
         printf("SDL_CreateWindowAndRenderer error: %s\n", SDL_GetError());
@@ -76,17 +76,17 @@ bool initialize_SDL(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Surface*& 
     }
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
+    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH * UNIT_WIDTH, SCREEN_HEIGHT * UNIT_WIDTH);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
     SDL_SetWindowTitle(window, "Karol Obrycki index: 203264");
 
-    screen = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32,
+    screen = SDL_CreateRGBSurface(0, SCREEN_WIDTH * UNIT_WIDTH, SCREEN_HEIGHT * UNIT_WIDTH, 32,
         0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
 
     scrtex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING,
-        SCREEN_WIDTH, SCREEN_HEIGHT);
+        SCREEN_WIDTH * UNIT_WIDTH, SCREEN_HEIGHT * UNIT_WIDTH);
 
     return true;
 }
@@ -95,10 +95,8 @@ void initialize_snake(Snake& snake) {
     snake.length = SNAKE_LENGTH;
     snake.direction = UP;
     for (int i = 0; i < snake.length; i++) {
-        snake.segments[i].x = SNAKE_X;
-        snake.segments[i].y = SNAKE_Y + i * SNAKE_WIDTH;
-        snake.segments[i].w = SNAKE_WIDTH;
-        snake.segments[i].h = SNAKE_WIDTH;
+        snake.segments[i][0] = SNAKE_X;
+        snake.segments[i][1] = SNAKE_Y + i;
     }
 }
 
@@ -139,13 +137,13 @@ void turn_snake_left(Snake& snake) {
 bool will_hit_wall(Snake& snake) {
     switch (snake.direction) {
     case UP:
-        return snake.segments[0].y - SNAKE_WIDTH < FIELD_Y;
+        return snake.segments[0][1] - 1 < 0;
     case DOWN:
-        return snake.segments[0].y + SNAKE_WIDTH > FIELD_Y + FIELD_HEIGHT - SNAKE_WIDTH;
+        return snake.segments[0][1] + 1 >= FIELD_HEIGHT;
     case LEFT:
-        return snake.segments[0].x - SNAKE_WIDTH < FIELD_X;
+        return snake.segments[0][0] - 1 < 0;
     case RIGHT:
-        return snake.segments[0].x + SNAKE_WIDTH > FIELD_X + FIELD_WIDTH - SNAKE_WIDTH;
+        return snake.segments[0][0] + 1 >= FIELD_WIDTH;
     }
     return false;
 }
@@ -186,7 +184,7 @@ void create_colors(SDL_Surface* screen, Uint32& czarny, Uint32& zielony, Uint32&
 }
 
 void draw_game_field(SDL_Surface* screen, Uint32 color) {
-    SDL_Rect fieldRect = { FIELD_X, FIELD_Y, FIELD_WIDTH, FIELD_HEIGHT };
+    SDL_Rect fieldRect = { FIELD_X * UNIT_WIDTH, FIELD_Y * UNIT_WIDTH, FIELD_WIDTH * UNIT_WIDTH, FIELD_HEIGHT * UNIT_WIDTH };
     SDL_FillRect(screen, &fieldRect, color);
 }
 
@@ -260,7 +258,8 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
 
         // Przesuniêcie segmentów cia³a
         for (int i = snake.length - 1; i > 0; i--) {
-            snake.segments[i] = snake.segments[i - 1];
+            snake.segments[i][0] = snake.segments[i-1][0];
+            snake.segments[i][1] = snake.segments[i-1][1];
         }
 
         // Sprawdzenie, czy w¹¿ nie wyjedzie poza granice pola
@@ -269,30 +268,36 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
         // Aktualizacja pozycji g³owy wê¿a
         switch (snake.direction) {
         case UP:
-            snake.segments[0].y -= SNAKE_WIDTH;
+            snake.segments[0][1]--;
             break;
         case DOWN:
-            snake.segments[0].y += SNAKE_WIDTH;
+            snake.segments[0][1]++;
             break;
         case LEFT:
-            snake.segments[0].x -= SNAKE_WIDTH;
+            snake.segments[0][0]--;
             break;
         case RIGHT:
-            snake.segments[0].x += SNAKE_WIDTH;
+            snake.segments[0][0]++;
             break;
         }
     }
 
     // Rysowanie segmentów cia³a wê¿a na powierzchni
     for (int i = 0; i < snake.length; i++) {
-        SDL_FillRect(screen, &snake.segments[i], color);
+        SDL_Rect SnakeRect;
+        SnakeRect.w = UNIT_WIDTH;
+        SnakeRect.h = UNIT_WIDTH;
+        SnakeRect.x = snake.segments[i][0] * UNIT_WIDTH + FIELD_X * UNIT_WIDTH;
+        SnakeRect.y = snake.segments[i][1] * UNIT_WIDTH + FIELD_Y * UNIT_WIDTH;
+        
+        SDL_FillRect(screen, &SnakeRect, color);
     }
 }
 
 void snake_collision(Snake& snake, bool& gameOver) {
     //collision with body
     for (int i = 1; i < snake.length; i++) {
-        if (snake.segments[0].x == snake.segments[i].x && snake.segments[0].y == snake.segments[i].y) {
+        if (snake.segments[0][0] == snake.segments[i][0] && snake.segments[0][1] == snake.segments[i][1]) {
             gameOver = true;
         }
     }
@@ -365,18 +370,17 @@ int main(int argc, char** argv) {
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == SDLK_ESCAPE)
                     quit = 1;
-                else if (event.key.keysym.sym == SDLK_UP && snake.direction != DOWN && snake.segments[0].y > FIELD_Y) {
-                    snake.direction = UP;
-
+                else if (event.key.keysym.sym == SDLK_UP && snake.direction != DOWN && snake.segments[0][1] - 1 >= 0) {
+                        snake.direction = UP;
                 }
-                else if (event.key.keysym.sym == SDLK_DOWN && snake.direction != UP && snake.segments[0].y <= FIELD_Y + FIELD_HEIGHT - 2 * SNAKE_WIDTH) {
-                    snake.direction = DOWN;
+                else if (event.key.keysym.sym == SDLK_DOWN && snake.segments[0][1] + 1 < FIELD_HEIGHT) {
+                        snake.direction = DOWN;
                 }
-                else if (event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT && snake.segments[0].x > FIELD_X) {
-                    snake.direction = LEFT;
+                else if (event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT && snake.segments[0][0] - 1 >= 0) {
+                        snake.direction = LEFT;
                 }
-                else if (event.key.keysym.sym == SDLK_RIGHT && snake.direction != LEFT && snake.segments[0].x <= FIELD_X + FIELD_WIDTH - 2 * SNAKE_WIDTH) {
-                    snake.direction = RIGHT;
+                else if (event.key.keysym.sym == SDLK_RIGHT && snake.direction != LEFT && snake.segments[0][0] + 1 < FIELD_WIDTH) {
+                        snake.direction = RIGHT;
                 }
                 else if (event.key.keysym.sym == SDLK_n) {
                     gameOver = false;
