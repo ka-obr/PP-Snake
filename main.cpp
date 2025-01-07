@@ -2,6 +2,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
 
 #include "includes/drawString.h"
 #include "includes/drawSurface.h"
@@ -27,7 +29,7 @@ extern "C" {
 //Snake defines in units
 #define SNAKE_LENGTH 7
 #define MAX_SNAKE_LENGTH 100
-#define SNAKE_SPEED 0.1 // Snake speed in sec
+#define SNAKE_SPEED 0.15 // Snake speed in sec
 #define SNAKE_X 12
 #define SNAKE_Y 10
 
@@ -48,6 +50,9 @@ extern "C" {
 #define NEW_GAME_X 393
 #define NEW_GAME_Y 267
 
+//Points for dots
+#define BLUE_POINTS 2
+
 const enum Direction {
     UP,
     DOWN,
@@ -60,6 +65,16 @@ struct Snake {
 	int segments[MAX_SNAKE_LENGTH][2];
     int length;
     Direction direction;
+};
+
+struct blueDot {
+	int x;
+	int y;
+};
+
+struct redDot {
+	int x;
+	int y;
 };
 
 bool initialize_SDL(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Surface*& screen, SDL_Texture*& scrtex) {
@@ -97,6 +112,54 @@ void initialize_snake(Snake& snake) {
     for (int i = 0; i < snake.length; i++) {
         snake.segments[i][0] = SNAKE_X;
         snake.segments[i][1] = SNAKE_Y + i;
+    }
+}
+
+void generate_dot(int& x, int& y, Snake& snake) {
+	srand(time(NULL));
+    bool validPosition;
+    do {
+        validPosition = true;
+        x = rand() % FIELD_WIDTH;
+        y = rand() % FIELD_HEIGHT;
+        for (int i = 0; i < snake.length; i++) {
+            if (x == snake.segments[i][0] && y == snake.segments[i][1]) {
+                validPosition = false;
+                break;
+            }
+        }
+    } while (!validPosition);
+}
+
+void initialize_dots(blueDot& blueDot, redDot& redDot, Snake& snake) {
+    generate_dot(blueDot.x, blueDot.y, snake);
+    generate_dot(redDot.x, redDot.y, snake);
+}
+
+void draw_dot(SDL_Surface* screen, int x, int y, SDL_Surface* dot) {
+	SDL_Rect dotRect;
+    dotRect.w = UNIT_WIDTH;
+    dotRect.h = UNIT_WIDTH;
+    dotRect.x = (x + FIELD_X) * UNIT_WIDTH;
+    dotRect.y = (y + FIELD_Y) * UNIT_WIDTH;
+    SDL_BlitSurface(dot, NULL, screen, &dotRect);
+}
+
+void draw_dots(SDL_Surface* screen, blueDot& blueDot, redDot& redDot, SDL_Surface* blueDotSurface, SDL_Surface* redDotSurface) {
+    draw_dot(screen, blueDot.x, blueDot.y, blueDotSurface);
+    draw_dot(screen, redDot.x, redDot.y, redDotSurface);
+}
+
+void check_dot_collision(Snake& snake, blueDot& blueDot, int& points) {
+    if (snake.segments[0][0] == blueDot.x && snake.segments[0][1] == blueDot.y) {
+        if (snake.length < MAX_SNAKE_LENGTH) {
+            snake.segments[snake.length][0] = snake.segments[snake.length - 1][0];
+            snake.segments[snake.length][1] = snake.segments[snake.length - 1][1];
+            snake.length++;
+        }
+        
+        points += BLUE_POINTS;
+        generate_dot(blueDot.x, blueDot.y, snake);
     }
 }
 
@@ -158,10 +221,13 @@ void check_snake_bounds(Snake& snake) {
     }
 }
 
-bool load_charset(SDL_Surface*& charset, SDL_Surface* screen, SDL_Texture* scrtex, SDL_Window* window, SDL_Renderer* renderer) {
+bool load_bmp(SDL_Surface*& charset, SDL_Surface*& redDot, SDL_Surface*& blueDot, SDL_Surface* screen, SDL_Texture* scrtex, SDL_Window* window, SDL_Renderer* renderer) {
     charset = SDL_LoadBMP("./cs8x8.bmp");
-    if (charset == NULL) {
-        printf("SDL_LoadBMP(cs8x8.bmp) error: %s\n", SDL_GetError());
+	redDot = SDL_LoadBMP("./red_dot.bmp");
+	blueDot = SDL_LoadBMP("./blue_dot.bmp");
+
+    if (charset == NULL || blueDot == NULL || redDot == NULL) {
+        printf("SDL_LoadBMP error: %s\n", SDL_GetError());
         SDL_FreeSurface(screen);
         SDL_DestroyTexture(scrtex);
         SDL_DestroyWindow(window);
@@ -169,7 +235,10 @@ bool load_charset(SDL_Surface*& charset, SDL_Surface* screen, SDL_Texture* scrte
         SDL_Quit();
         return false;
     }
+
     SDL_SetColorKey(charset, true, 0x000000);
+    SDL_SetColorKey(redDot, true, 0x000000);
+    SDL_SetColorKey(blueDot, true, 0x000000);
     return true;
 }
 
@@ -220,13 +289,15 @@ void display_new_game(SDL_Surface* screen, SDL_Surface* charset, double& newGame
     }
 }
 
-void reset_game(double& worldTime, int& frames, double& fpsTimer, double& fps, double& newGameTimer, Snake& snake) {
+void reset_game(double& worldTime, int& frames, double& fpsTimer, double& fps, double& newGameTimer, Snake& snake, blueDot& blueDot, int& points) {
     worldTime = 0;
     frames = 0;
     fpsTimer = 0;
     fps = 0;
+    points = 0;
     newGameTimer = NEW_GAME_TIME;
 	initialize_snake(snake);
+    generate_dot(blueDot.x, blueDot.y, snake);
 }
 
 void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_Surface* screen, Uint32 jasny_niebieski, Uint32 zielony, double& fpsTimer, int& frames, double& fps, bool& gameOver) {
@@ -251,7 +322,7 @@ void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_S
     }
 }
 
-void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_Surface* screen, Uint32 color) {
+void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_Surface* screen, Uint32 color, blueDot& blueDot, int& points) {
     snakeTimer += delta;
     if (snakeTimer >= SNAKE_SPEED) {
         snakeTimer = 0;
@@ -280,6 +351,8 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
             snake.segments[0][0]++;
             break;
         }
+
+		check_dot_collision(snake, blueDot, points);
     }
 
     // Rysowanie segmentów cia³a wê¿a na powierzchni
@@ -316,17 +389,21 @@ int main(int argc, char** argv) {
     SDL_Renderer* renderer;
     SDL_Surface* screen;
     SDL_Surface* charset;
+	SDL_Surface* blueDotSurface;
+	SDL_Surface* redDotSurface;
     SDL_Texture* scrtex;
     Snake snake;
+	blueDot blueDot;
+    redDot redDot;
     bool gameOver = false;
 
-    printf("Artur Goat\n");
+    printf("SKIBIDI\n");
 
     if (!initialize_SDL(window, renderer, screen, scrtex)) {
         return 1;
     }
 
-    if (!load_charset(charset, screen, scrtex, window, renderer)) {
+    if (!load_bmp(charset, redDotSurface, blueDotSurface, screen, scrtex, window, renderer)) {
         return 1;
     }
 
@@ -340,25 +417,27 @@ int main(int argc, char** argv) {
     quit = 0;
     worldTime = 0;
     newGameTimer = 0;
+    points = 0;
 
 	initialize_snake(snake);
+	generate_dot(blueDot.x, blueDot.y, snake);
 
     while (!quit) {
         update_game_state(t1, t2, delta, worldTime, screen, jasny_niebieski, zielony, fpsTimer, frames, fps, gameOver);
 
         if (!gameOver) {
-            update_and_draw_snake(snake, snakeTimer, delta, screen, fioletowy);
+            update_and_draw_snake(snake, snakeTimer, delta, screen, fioletowy, blueDot, points);
+			draw_dot(screen, blueDot.x, blueDot.y, blueDotSurface);
             snake_collision(snake, gameOver);
         }
         else {
             lose_information(screen, charset, zielony, niebieski);
-        };
+        }
+
+        display_new_game(screen, charset, newGameTimer, delta);
 
         // Tekst informacyjny
         display_information(screen, charset, zielony, niebieski, worldTime, fps, points);
-
-        // Wyswietlenie napisu "New game"
-        display_new_game(screen, charset, newGameTimer, delta);
 
         SDL_UpdateTexture(scrtex, NULL, screen->pixels, screen->pitch);
         SDL_RenderCopy(renderer, scrtex, NULL, NULL);
@@ -384,7 +463,7 @@ int main(int argc, char** argv) {
                 }
                 else if (event.key.keysym.sym == SDLK_n) {
                     gameOver = false;
-                    reset_game(worldTime, frames, fpsTimer, fps, newGameTimer, snake);
+                    reset_game(worldTime, frames, fpsTimer, fps, newGameTimer, snake, blueDot, points);
                 }
                 break;
             case SDL_QUIT:
