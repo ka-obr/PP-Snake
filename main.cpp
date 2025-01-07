@@ -14,11 +14,13 @@ extern "C" {
 #include "./SDL2-2.0.10/include/SDL_main.h"
 }
 
-//Board defines
+#define UNIT_WIDTH 25
+
+//Board defines in units
 #define SCREEN_WIDTH 850
 #define SCREEN_HEIGHT 550
 #define FIELD_WIDTH 650
-#define FIELD_HEIGHT 455
+#define FIELD_HEIGHT 450
 #define FIELD_X 100
 #define FIELD_Y 75
 
@@ -26,9 +28,9 @@ extern "C" {
 #define SNAKE_LENGTH 10
 #define MAX_SNAKE_LENGTH 100
 #define SNAKE_SPEED 0.1 // Snake speed in sec
-#define SNAKE_X SCREEN_WIDTH / 2
-#define SNAKE_Y SCREEN_HEIGHT / 2 + 15
-#define SNAKE_WIDTH 12
+#define SNAKE_X SNAKE_WIDTH * 16
+#define SNAKE_Y SNAKE_WIDTH * 10
+#define SNAKE_WIDTH 25
 
 //Additional information board defines
 #define INFO_TEXT_WIDTH SCREEN_WIDTH - 8
@@ -137,13 +139,13 @@ void turn_snake_left(Snake& snake) {
 bool will_hit_wall(Snake& snake) {
     switch (snake.direction) {
     case UP:
-        return snake.segments[0].y < FIELD_Y;
+        return snake.segments[0].y - SNAKE_WIDTH < FIELD_Y;
     case DOWN:
-        return snake.segments[0].y >= FIELD_Y + FIELD_HEIGHT - SNAKE_WIDTH;
+        return snake.segments[0].y + SNAKE_WIDTH > FIELD_Y + FIELD_HEIGHT - SNAKE_WIDTH;
     case LEFT:
-        return snake.segments[0].x < FIELD_X + SNAKE_WIDTH;
+        return snake.segments[0].x - SNAKE_WIDTH < FIELD_X;
     case RIGHT:
-        return snake.segments[0].x >= FIELD_X + FIELD_WIDTH - 2 * SNAKE_WIDTH;
+        return snake.segments[0].x + SNAKE_WIDTH > FIELD_X + FIELD_WIDTH - SNAKE_WIDTH;
     }
     return false;
 }
@@ -313,7 +315,7 @@ int main(int argc, char** argv) {
     Snake snake;
     bool gameOver = false;
 
-    printf("SKIBIDI\n");
+    printf("Artur Goat\n");
 
     if (!initialize_SDL(window, renderer, screen, scrtex)) {
         return 1;
@@ -363,16 +365,17 @@ int main(int argc, char** argv) {
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == SDLK_ESCAPE)
                     quit = 1;
-                else if (event.key.keysym.sym == SDLK_UP && snake.direction != DOWN && snake.segments[0].y >= FIELD_Y) {
+                else if (event.key.keysym.sym == SDLK_UP && snake.direction != DOWN && snake.segments[0].y > FIELD_Y) {
                     snake.direction = UP;
+
                 }
-                else if (event.key.keysym.sym == SDLK_DOWN && snake.direction != UP && snake.segments[0].y < FIELD_Y + FIELD_HEIGHT - SNAKE_WIDTH) {
+                else if (event.key.keysym.sym == SDLK_DOWN && snake.direction != UP && snake.segments[0].y <= FIELD_Y + FIELD_HEIGHT - 2 * SNAKE_WIDTH) {
                     snake.direction = DOWN;
                 }
-                else if (event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT && snake.segments[0].x >= FIELD_X + SNAKE_WIDTH) {
+                else if (event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT && snake.segments[0].x > FIELD_X) {
                     snake.direction = LEFT;
                 }
-                else if (event.key.keysym.sym == SDLK_RIGHT && snake.direction != LEFT && snake.segments[0].x < FIELD_X + FIELD_WIDTH - 2 * SNAKE_WIDTH) {
+                else if (event.key.keysym.sym == SDLK_RIGHT && snake.direction != LEFT && snake.segments[0].x <= FIELD_X + FIELD_WIDTH - 2 * SNAKE_WIDTH) {
                     snake.direction = RIGHT;
                 }
                 else if (event.key.keysym.sym == SDLK_n) {
