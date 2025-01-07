@@ -253,8 +253,7 @@ void create_colors(SDL_Surface* screen, Uint32& czarny, Uint32& zielony, Uint32&
 }
 
 void draw_game_field(SDL_Surface* screen, Uint32 color) {
-    SDL_Rect fieldRect = { FIELD_X * UNIT_WIDTH, FIELD_Y * UNIT_WIDTH, FIELD_WIDTH * UNIT_WIDTH, FIELD_HEIGHT * UNIT_WIDTH };
-    SDL_FillRect(screen, &fieldRect, color);
+    DrawRectangle(screen, FIELD_X * UNIT_WIDTH, FIELD_Y * UNIT_WIDTH, FIELD_WIDTH * UNIT_WIDTH, FIELD_HEIGHT * UNIT_WIDTH, color, color);
 }
 
 void display_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielony, Uint32 niebieski, double worldTime, double fps, int points) {
@@ -357,13 +356,7 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
 
     // Rysowanie segmentów cia³a wê¿a na powierzchni
     for (int i = 0; i < snake.length; i++) {
-        SDL_Rect SnakeRect;
-        SnakeRect.w = UNIT_WIDTH;
-        SnakeRect.h = UNIT_WIDTH;
-        SnakeRect.x = snake.segments[i][0] * UNIT_WIDTH + FIELD_X * UNIT_WIDTH;
-        SnakeRect.y = snake.segments[i][1] * UNIT_WIDTH + FIELD_Y * UNIT_WIDTH;
-        
-        SDL_FillRect(screen, &SnakeRect, color);
+        DrawRectangle(screen, snake.segments[i][0] * UNIT_WIDTH + FIELD_X * UNIT_WIDTH, snake.segments[i][1] * UNIT_WIDTH + FIELD_Y * UNIT_WIDTH, UNIT_WIDTH, UNIT_WIDTH, color, color);
     }
 }
 
