@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <windows.h>
+#include <mmsystem.h>
 
 #include "includes/drawString.h"
 #include "includes/drawSurface.h"
@@ -50,6 +52,12 @@ extern "C" {
 #define NEW_GAME_X 393
 #define NEW_GAME_Y 267
 
+//Progress bar defines
+#define PROGRESS_BAR_X 375
+#define PROGRESS_BAR_Y 550
+#define PROGRESS_BAR_WIDTH 250
+#define PROGRESS_BAR_HEIGHT 10
+
 //Points for blue & red dot dot
 #define BLUE_POINTS 2
 #define RED_POINTS 5
@@ -60,7 +68,7 @@ extern "C" {
 
 //Red dot defines
 #define RED_DOT_TIME 5.0 //time in seconds
-#define RED_DOT_PERC 40 //chance of red dot appealing
+#define RED_DOT_PERC 20 //chance of red dot appealing
 #define RED_DOT_SNAKE_SPEED 0.05 //increasing speed of the snake after eating red dot
 #define SHORTENING_SNAKE 5
 
@@ -197,13 +205,13 @@ void check_dot_collision(Snake& snake, blueDot& blueDot, redDot& redDot, int& po
 
         points += BLUE_POINTS;
         initialize_blue_dot(blueDot.x, blueDot.y, snake);
+		PlaySound(TEXT("./sound_blue.wav"), NULL, SND_FILENAME | SND_ASYNC);
         printf("Snake length after eating blue dot: %d\n", snake.length);
     }
     else if (snake.segments[0][0] == redDot.x && snake.segments[0][1] == redDot.y) {
         points += RED_POINTS;
         redDot.x = -1;
         redDot.y = -1;
-        redDotTimer = 0;
 
         if (rand() % 2 == 0) {
             snakeSpeed += RED_DOT_SNAKE_SPEED;
@@ -216,6 +224,7 @@ void check_dot_collision(Snake& snake, blueDot& blueDot, redDot& redDot, int& po
                 snakeSpeed += RED_DOT_SNAKE_SPEED;
             }
         }
+        PlaySound(TEXT("./sound_red.wav"), NULL, SND_FILENAME | SND_ASYNC);
         printf("Snake length after eating red dot: %d\n", snake.length);
     }
 }
