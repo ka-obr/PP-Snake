@@ -60,7 +60,7 @@ extern "C" {
 
 //Red dot defines
 #define RED_DOT_TIME 5.0 //time in seconds
-#define RED_DOT_PERC 50 //chance of red dot appealing
+#define RED_DOT_PERC 40 //chance of red dot appealing
 #define RED_DOT_SNAKE_SPEED 0.05 //increasing speed of the snake after eating red dot
 #define SHORTENING_SNAKE 5
 
@@ -142,26 +142,32 @@ void initialize_blue_dot(int& x, int& y, Snake& snake) {
 }
 
 void initialize_red_dot(int& x, int& y, Snake& snake, blueDot& blueDot) {
-    if (rand() % 100 < RED_DOT_PERC) {
-        bool validPosition;
-        do {
-            validPosition = true;
-            x = rand() % FIELD_WIDTH;
-            y = rand() % FIELD_HEIGHT;
-            for (int i = 0; i < snake.length; i++) {
-                if (x == snake.segments[i][0] && y == snake.segments[i][1]) {
-                    validPosition = false;
-                    break;
-                }
-            }
-            if (x == blueDot.x && y == blueDot.y) {
+    bool validPosition;
+    do {
+        validPosition = true;
+        x = rand() % FIELD_WIDTH;
+        y = rand() % FIELD_HEIGHT;
+        for (int i = 0; i < snake.length; i++) {
+            if (x == snake.segments[i][0] && y == snake.segments[i][1]) {
                 validPosition = false;
+                break;
             }
-        } while (!validPosition);
+        }
+        if (x == blueDot.x && y == blueDot.y) {
+            validPosition = false;
+        }
+    } while (!validPosition);
+}
+
+void initialize_dots(blueDot& blueDot, redDot& redDot, Snake& snake, double& redDotTimer) {
+    initialize_blue_dot(blueDot.x, blueDot.y, snake);
+    if (rand() % 100 < RED_DOT_PERC) {
+        initialize_red_dot(redDot.x, redDot.y, snake, blueDot);
+        redDotTimer = 0;
     }
     else {
-        x = -1;
-        y = -1;
+        redDot.x = -1;
+        redDot.y = -1;
     }
 }
 
@@ -190,20 +196,27 @@ void check_dot_collision(Snake& snake, blueDot& blueDot, redDot& redDot, int& po
         }
 
         points += BLUE_POINTS;
-		initialize_blue_dot(blueDot.x, blueDot.y, snake);
+        initialize_blue_dot(blueDot.x, blueDot.y, snake);
+        printf("Snake length after eating blue dot: %d\n", snake.length);
     }
     else if (snake.segments[0][0] == redDot.x && snake.segments[0][1] == redDot.y) {
         points += RED_POINTS;
-		initialize_red_dot(redDot.x, redDot.y, snake, blueDot);
+        redDot.x = -1;
+        redDot.y = -1;
+        redDotTimer = 0;
 
         if (rand() % 2 == 0) {
             snakeSpeed += RED_DOT_SNAKE_SPEED;
         }
         else {
-            if (snake.length > 1) {
+            if (snake.length > SHORTENING_SNAKE + 1) {
                 snake.length -= SHORTENING_SNAKE;
             }
+            else {
+                snakeSpeed += RED_DOT_SNAKE_SPEED;
+            }
         }
+        printf("Snake length after eating red dot: %d\n", snake.length);
     }
 }
 
@@ -344,7 +357,14 @@ void reset_game(double& worldTime, int& frames, double& fpsTimer, double& fps, d
     redDotTimer = 0;
     initialize_snake(snake);
     initialize_blue_dot(blueDot.x, blueDot.y, snake);
-    initialize_red_dot(redDot.x, redDot.y, snake, blueDot);
+    if (rand() % 100 < RED_DOT_PERC) {
+        initialize_red_dot(redDot.x, redDot.y, snake, blueDot);
+        redDotTimer = 0;
+    }
+    else {
+        redDot.x = -1;
+        redDot.y = -1;
+    }
 }
 
 void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_Surface* screen, Uint32 jasny_niebieski, Uint32 zielony, double& fpsTimer, int& frames, double& fps, bool& gameOver) {
@@ -371,7 +391,7 @@ void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_S
 
 void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_Surface* screen, Uint32 color, blueDot& blueDot, redDot& redDot, int& points, double& snakeSpeed, double& worldTime, double& lastSpeedIncreaseTime, double& redDotTimer) {
     snakeTimer += delta;
-	redDotTimer += delta;
+    redDotTimer += delta;
 
     if (worldTime - lastSpeedIncreaseTime >= GAME_SPEED_TIME) {
         snakeSpeed *= (100.0 - GAME_SPEED) / 100.0;
@@ -379,8 +399,14 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
     }
 
     if (redDotTimer >= RED_DOT_TIME) {
-        initialize_red_dot(redDot.x, redDot.y, snake, blueDot);
         redDotTimer = 0;
+        if (rand() % 100 < RED_DOT_PERC) {
+            initialize_red_dot(redDot.x, redDot.y, snake, blueDot);
+        }
+        else {
+            redDot.x = -1;
+            redDot.y = -1;
+        }
     }
 
     if (snakeTimer >= snakeSpeed) {
@@ -388,8 +414,8 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
 
         // Przesuniêcie segmentów cia³a
         for (int i = snake.length - 1; i > 0; i--) {
-            snake.segments[i][0] = snake.segments[i-1][0];
-            snake.segments[i][1] = snake.segments[i-1][1];
+            snake.segments[i][0] = snake.segments[i - 1][0];
+            snake.segments[i][1] = snake.segments[i - 1][1];
         }
 
         // Sprawdzenie, czy w¹¿ nie wyjedzie poza granice pola
@@ -411,7 +437,7 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
             break;
         }
 
-		check_dot_collision(snake, blueDot, redDot, points, snakeSpeed, redDotTimer);
+        check_dot_collision(snake, blueDot, redDot, points, snakeSpeed, redDotTimer);
     }
 
     // Rysowanie segmentów cia³a wê¿a na powierzchni
@@ -473,16 +499,15 @@ int main(int argc, char** argv) {
     newGameTimer = 0;
     points = 0;
 
-	initialize_snake(snake);
-	initialize_blue_dot(blueDot.x, blueDot.y, snake);
-	initialize_red_dot(redDot.x, redDot.y, snake, blueDot);
+    initialize_snake(snake);
+    initialize_dots(blueDot, redDot, snake, redDotTimer);
 
     while (!quit) {
         update_game_state(t1, t2, delta, worldTime, screen, jasny_niebieski, zielony, fpsTimer, frames, fps, gameOver);
 
         if (!gameOver) {
             update_and_draw_snake(snake, snakeTimer, delta, screen, fioletowy, blueDot, redDot, points, snakeSpeed, worldTime, lastSpeedIncreaseTime, redDotTimer);
-			draw_dots(screen, blueDot, redDot, blueDotSurface, redDotSurface);
+            draw_dots(screen, blueDot, redDot, blueDotSurface, redDotSurface);
             snake_collision(snake, gameOver);
         }
         else {
@@ -507,7 +532,7 @@ int main(int argc, char** argv) {
                 else if (event.key.keysym.sym == SDLK_UP && snake.direction != DOWN && snake.segments[0][1] - 1 >= 0) {
                         snake.direction = UP;
                 }
-                else if (event.key.keysym.sym == SDLK_DOWN && snake.segments[0][1] + 1 < FIELD_HEIGHT) {
+                else if (event.key.keysym.sym == SDLK_DOWN && snake.direction != UP && snake.segments[0][1] + 1 < FIELD_HEIGHT) {
                         snake.direction = DOWN;
                 }
                 else if (event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT && snake.segments[0][0] - 1 >= 0) {

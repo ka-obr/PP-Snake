@@ -1,11 +1,11 @@
 ﻿  main.cpp
-C:\Code\SnakeProject\main.cpp(307,38): warning C4267: "argument": konwersja z "size_t" do "int", możliwa utrata danych
-C:\Code\SnakeProject\main.cpp(309,38): warning C4267: "argument": konwersja z "size_t" do "int", możliwa utrata danych
-C:\Code\SnakeProject\main.cpp(311,38): warning C4267: "argument": konwersja z "size_t" do "int", możliwa utrata danych
-C:\Code\SnakeProject\main.cpp(306,5): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-C:\Code\SnakeProject\main.cpp(308,5): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-C:\Code\SnakeProject\main.cpp(310,5): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-C:\Code\SnakeProject\main.cpp(321,27): warning C4267: "inicjowanie": konwersja z "size_t" do "int", możliwa utrata danych
-C:\Code\SnakeProject\main.cpp(322,23): warning C4267: "inicjowanie": konwersja z "size_t" do "int", możliwa utrata danych
-C:\Code\SnakeProject\main.cpp(437,15): warning C4244: "argument": konwersja z "time_t" do "unsigned int", możliwa utrata danych
+C:\Code\SnakeProject\main.cpp(320,38): warning C4267: "argument": konwersja z "size_t" do "int", możliwa utrata danych
+C:\Code\SnakeProject\main.cpp(322,38): warning C4267: "argument": konwersja z "size_t" do "int", możliwa utrata danych
+C:\Code\SnakeProject\main.cpp(324,38): warning C4267: "argument": konwersja z "size_t" do "int", możliwa utrata danych
+C:\Code\SnakeProject\main.cpp(319,5): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Code\SnakeProject\main.cpp(321,5): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Code\SnakeProject\main.cpp(323,5): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Code\SnakeProject\main.cpp(334,27): warning C4267: "inicjowanie": konwersja z "size_t" do "int", możliwa utrata danych
+C:\Code\SnakeProject\main.cpp(335,23): warning C4267: "inicjowanie": konwersja z "size_t" do "int", możliwa utrata danych
+C:\Code\SnakeProject\main.cpp(463,15): warning C4244: "argument": konwersja z "time_t" do "unsigned int", możliwa utrata danych
   szablon2vs19.vcxproj -> C:\Code\SnakeProject\x64\Debug\szablon2vs19.exe
