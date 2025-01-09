@@ -53,10 +53,10 @@ extern "C" {
 #define NEW_GAME_Y 267
 
 //Progress bar defines
-#define PROGRESS_BAR_X 375
-#define PROGRESS_BAR_Y 550
-#define PROGRESS_BAR_WIDTH 250
-#define PROGRESS_BAR_HEIGHT 10
+#define PROGRESS_BAR_X 320
+#define PROGRESS_BAR_Y 560
+#define PROGRESS_BAR_WIDTH 200
+#define PROGRESS_BAR_HEIGHT 25
 
 //Points for blue & red dot dot
 #define BLUE_POINTS 2
@@ -70,7 +70,7 @@ extern "C" {
 #define RED_DOT_TIME 5.0 //time in seconds
 #define RED_DOT_PERC 20 //chance of red dot appealing
 #define RED_DOT_SNAKE_SPEED 0.05 //increasing speed of the snake after eating red dot
-#define SHORTENING_SNAKE 5
+#define SHORTENING_SNAKE 8
 
 const enum Direction {
     UP,
@@ -179,6 +179,12 @@ void initialize_dots(blueDot& blueDot, redDot& redDot, Snake& snake, double& red
     }
 }
 
+void draw_progress_bar(SDL_Surface* screen, Uint32 color1, Uint32 color2, double redDotTimer) {
+    double progress = redDotTimer / RED_DOT_TIME;
+    DrawRectangle(screen, PROGRESS_BAR_X, PROGRESS_BAR_Y, PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT, color1, color1);
+    DrawRectangle(screen, PROGRESS_BAR_X + 2, PROGRESS_BAR_Y + 2, (PROGRESS_BAR_WIDTH - 4) * (1.0 - progress), PROGRESS_BAR_HEIGHT - 4, color2, color2);
+}
+
 void draw_dot(SDL_Surface* screen, int x, int y, SDL_Surface* dot) {
 	SDL_Rect dotRect;
     dotRect.w = UNIT_WIDTH;
@@ -188,10 +194,11 @@ void draw_dot(SDL_Surface* screen, int x, int y, SDL_Surface* dot) {
     SDL_BlitSurface(dot, NULL, screen, &dotRect);
 }
 
-void draw_dots(SDL_Surface* screen, blueDot& blueDot, redDot& redDot, SDL_Surface* blueDotSurface, SDL_Surface* redDotSurface) {
+void draw_dots(SDL_Surface* screen, blueDot& blueDot, redDot& redDot, SDL_Surface* blueDotSurface, SDL_Surface* redDotSurface, Uint32 color1, Uint32 color2, double redDotTimer) {
     draw_dot(screen, blueDot.x, blueDot.y, blueDotSurface);
 	if (redDot.x != -1) {
 		draw_dot(screen, redDot.x, redDot.y, redDotSurface);
+        draw_progress_bar(screen, color1, color2, redDotTimer);
 	}
 }
 
@@ -206,7 +213,6 @@ void check_dot_collision(Snake& snake, blueDot& blueDot, redDot& redDot, int& po
         points += BLUE_POINTS;
         initialize_blue_dot(blueDot.x, blueDot.y, snake);
 		PlaySound(TEXT("./sound_blue.wav"), NULL, SND_FILENAME | SND_ASYNC);
-        printf("Snake length after eating blue dot: %d\n", snake.length);
     }
     else if (snake.segments[0][0] == redDot.x && snake.segments[0][1] == redDot.y) {
         points += RED_POINTS;
@@ -225,7 +231,6 @@ void check_dot_collision(Snake& snake, blueDot& blueDot, redDot& redDot, int& po
             }
         }
         PlaySound(TEXT("./sound_red.wav"), NULL, SND_FILENAME | SND_ASYNC);
-        printf("Snake length after eating red dot: %d\n", snake.length);
     }
 }
 
@@ -311,7 +316,7 @@ bool load_bmp(SDL_Surface*& charset, SDL_Surface*& redDot, SDL_Surface*& blueDot
 void create_colors(SDL_Surface* screen, Uint32& czarny, Uint32& zielony, Uint32& czerwony, Uint32& niebieski, Uint32& bialy, Uint32& jasny_niebieski, Uint32& fioletowy) {
     czarny = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
     zielony = SDL_MapRGB(screen->format, 23, 199, 64);
-    czerwony = SDL_MapRGB(screen->format, 0xFF, 0x00, 0x00);
+    czerwony = SDL_MapRGB(screen->format, 198, 0x00, 0x00);
     niebieski = SDL_MapRGB(screen->format, 0x11, 0x11, 0xCC);
     bialy = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
     jasny_niebieski = SDL_MapRGB(screen->format, 110, 149, 255);
@@ -470,8 +475,8 @@ extern "C"
 
 int main(int argc, char** argv) {
     srand(time(NULL));
-    int t1, t2, quit, frames, points = 0;
-    double delta, worldTime, fpsTimer, fps, newGameTimer, snakeTimer = 0, snakeSpeed = SNAKE_SPEED, lastSpeedIncreaseTime = 0, redDotTimer = 0;
+    int t1, t2, quit = 0, frames = 0, points = 0;
+    double delta, worldTime = 0, fpsTimer = 0, fps = 0, newGameTimer = 0, snakeTimer = 0, snakeSpeed = SNAKE_SPEED, lastSpeedIncreaseTime = 0, redDotTimer = 0;
     Uint32 czarny, zielony, czerwony, niebieski, bialy, jasny_niebieski, fioletowy;
     SDL_Event event;
     SDL_Window* window;
@@ -500,14 +505,6 @@ int main(int argc, char** argv) {
 
     t1 = SDL_GetTicks();
 
-    frames = 0;
-    fpsTimer = 0;
-    fps = 0;
-    quit = 0;
-    worldTime = 0;
-    newGameTimer = 0;
-    points = 0;
-
     initialize_snake(snake);
     initialize_dots(blueDot, redDot, snake, redDotTimer);
 
@@ -516,7 +513,7 @@ int main(int argc, char** argv) {
 
         if (!gameOver) {
             update_and_draw_snake(snake, snakeTimer, delta, screen, fioletowy, blueDot, redDot, points, snakeSpeed, worldTime, lastSpeedIncreaseTime, redDotTimer);
-            draw_dots(screen, blueDot, redDot, blueDotSurface, redDotSurface);
+            draw_dots(screen, blueDot, redDot, blueDotSurface, redDotSurface, niebieski, czerwony, redDotTimer);
             snake_collision(snake, gameOver);
         }
         else {
