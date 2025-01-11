@@ -18,7 +18,7 @@ extern "C" {
 #include "./SDL2-2.0.10/include/SDL_main.h"
 }
 
-#define UNIT_WIDTH 25
+#define UNIT 25
 
 //Board defines in units
 #define SCREEN_WIDTH 34
@@ -31,7 +31,7 @@ extern "C" {
 //Snake defines in units
 #define SNAKE_LENGTH 7
 #define MAX_SNAKE_LENGTH 100
-#define SNAKE_SPEED 0.15 // Snake speed in sec
+#define SNAKE_SPEED 5.0 //Snake speed in units per second
 #define SNAKE_X 12
 #define SNAKE_Y 10
 
@@ -68,8 +68,8 @@ extern "C" {
 
 //Red dot defines
 #define RED_DOT_TIME 5.0 //time in seconds
-#define RED_DOT_PERC 20 //chance of red dot appealing
-#define RED_DOT_SNAKE_SPEED 0.05 //increasing speed of the snake after eating red dot
+#define RED_DOT_PERC 30 //chance of red dot appealing
+#define RED_DOT_SNAKE_SPEED 2.0 //slowing speed of the snake after eating red dot
 #define SHORTENING_SNAKE 8
 
 const enum Direction {
@@ -102,7 +102,7 @@ bool initialize_SDL(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Surface*& 
         return false;
     }
 
-    int rc = SDL_CreateWindowAndRenderer(SCREEN_WIDTH * UNIT_WIDTH, SCREEN_HEIGHT * UNIT_WIDTH, 0, &window, &renderer);
+    int rc = SDL_CreateWindowAndRenderer(SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT, 0, &window, &renderer);
     if (rc != 0) {
         SDL_Quit();
         printf("SDL_CreateWindowAndRenderer error: %s\n", SDL_GetError());
@@ -110,17 +110,17 @@ bool initialize_SDL(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Surface*& 
     }
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH * UNIT_WIDTH, SCREEN_HEIGHT * UNIT_WIDTH);
+    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
     SDL_SetWindowTitle(window, "Karol Obrycki index: 203264");
 
-    screen = SDL_CreateRGBSurface(0, SCREEN_WIDTH * UNIT_WIDTH, SCREEN_HEIGHT * UNIT_WIDTH, 32,
+    screen = SDL_CreateRGBSurface(0, SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT, 32,
         0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
 
     scrtex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING,
-        SCREEN_WIDTH * UNIT_WIDTH, SCREEN_HEIGHT * UNIT_WIDTH);
+        SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT);
 
     return true;
 }
@@ -187,10 +187,10 @@ void draw_progress_bar(SDL_Surface* screen, Uint32 color1, Uint32 color2, double
 
 void draw_dot(SDL_Surface* screen, int x, int y, SDL_Surface* dot) {
 	SDL_Rect dotRect;
-    dotRect.w = UNIT_WIDTH;
-    dotRect.h = UNIT_WIDTH;
-    dotRect.x = (x + FIELD_X) * UNIT_WIDTH;
-    dotRect.y = (y + FIELD_Y) * UNIT_WIDTH;
+    dotRect.w = UNIT;
+    dotRect.h = UNIT;
+    dotRect.x = (x + FIELD_X) * UNIT;
+    dotRect.y = (y + FIELD_Y) * UNIT;
     SDL_BlitSurface(dot, NULL, screen, &dotRect);
 }
 
@@ -220,14 +220,14 @@ void check_dot_collision(Snake& snake, blueDot& blueDot, redDot& redDot, int& po
         redDot.y = -1;
 
         if (rand() % 2 == 0) {
-            snakeSpeed += RED_DOT_SNAKE_SPEED;
+            snakeSpeed -= RED_DOT_SNAKE_SPEED;
         }
         else {
             if (snake.length > SHORTENING_SNAKE + 1) {
                 snake.length -= SHORTENING_SNAKE;
             }
             else {
-                snakeSpeed += RED_DOT_SNAKE_SPEED;
+                snakeSpeed -= RED_DOT_SNAKE_SPEED;
             }
         }
         PlaySound(TEXT("./sound_red.wav"), NULL, SND_FILENAME | SND_ASYNC);
@@ -324,7 +324,7 @@ void create_colors(SDL_Surface* screen, Uint32& czarny, Uint32& zielony, Uint32&
 }
 
 void draw_game_field(SDL_Surface* screen, Uint32 color) {
-    DrawRectangle(screen, FIELD_X * UNIT_WIDTH, FIELD_Y * UNIT_WIDTH, FIELD_WIDTH * UNIT_WIDTH, FIELD_HEIGHT * UNIT_WIDTH, color, color);
+    DrawRectangle(screen, FIELD_X * UNIT, FIELD_Y * UNIT, FIELD_WIDTH * UNIT, FIELD_HEIGHT * UNIT, color, color);
 }
 
 void display_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielony, Uint32 niebieski, double worldTime, double fps, int points) {
@@ -384,7 +384,7 @@ void reset_game(double& worldTime, int& frames, double& fpsTimer, double& fps, d
 void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_Surface* screen, Uint32 jasny_niebieski, Uint32 zielony, double& fpsTimer, int& frames, double& fps, bool& gameOver) {
     t2 = SDL_GetTicks();
 
-    delta = (t2 - t1) * 0.001;
+	delta = (t2 - t1) * 0.001; //delta (time between frames) in seconds
     t1 = t2;
 
     if (!gameOver) {
@@ -404,11 +404,11 @@ void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_S
 }
 
 void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_Surface* screen, Uint32 color, blueDot& blueDot, redDot& redDot, int& points, double& snakeSpeed, double& worldTime, double& lastSpeedIncreaseTime, double& redDotTimer) {
-    snakeTimer += delta;
+    snakeTimer += delta * snakeSpeed;
     redDotTimer += delta;
 
     if (worldTime - lastSpeedIncreaseTime >= GAME_SPEED_TIME) {
-        snakeSpeed *= (100.0 - GAME_SPEED) / 100.0;
+        snakeSpeed *= (100.0 + GAME_SPEED) / 100.0;
         lastSpeedIncreaseTime = worldTime;
     }
 
@@ -423,7 +423,7 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
         }
     }
 
-    if (snakeTimer >= snakeSpeed) {
+    if (snakeTimer >= 1.0) {
         snakeTimer = 0;
 
         // Przesuniêcie segmentów cia³a
@@ -456,7 +456,7 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
 
     // Rysowanie segmentów cia³a wê¿a na powierzchni
     for (int i = 0; i < snake.length; i++) {
-        DrawRectangle(screen, snake.segments[i][0] * UNIT_WIDTH + FIELD_X * UNIT_WIDTH, snake.segments[i][1] * UNIT_WIDTH + FIELD_Y * UNIT_WIDTH, UNIT_WIDTH, UNIT_WIDTH, color, color);
+        DrawRectangle(screen, snake.segments[i][0] * UNIT + FIELD_X * UNIT, snake.segments[i][1] * UNIT + FIELD_Y * UNIT, UNIT, UNIT, color, color);
     }
 }
 
