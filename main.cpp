@@ -79,30 +79,48 @@ const enum Direction {
     RIGHT
 };
 
+struct GameState {
+    int t1, t2, quit, frames, points;
+    double delta, worldTime, fpsTimer, fps, newGameTimer, snakeTimer, snakeSpeed, lastSpeedIncreaseTime, redDotTimer;
+    bool gameOver;
+};
+
+struct GameResources {
+    Uint32 czarny, zielony, czerwony, niebieski, bialy, jasny_niebieski, fioletowy;
+    SDL_Event event;
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    SDL_Surface* screen;
+    SDL_Surface* charset;
+    SDL_Surface* blueDotSurface;
+    SDL_Surface* redDotSurface;
+    SDL_Texture* scrtex;
+};
+
 struct Snake {
-	//Array of snake segments storing unit x [0] and unit y [1] coordinates
-	int segments[MAX_SNAKE_LENGTH][2];
+    //Array of snake segments storing unit x [0] and unit y [1] coordinates
+    int segments[MAX_SNAKE_LENGTH][2];
     int length;
     Direction direction;
 };
 
 struct blueDot {
-	int x;
-	int y;
+    int x;
+    int y;
 };
 
 struct redDot {
-	int x;
-	int y;
+    int x;
+    int y;
 };
 
-bool initialize_SDL(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Surface*& screen, SDL_Texture*& scrtex) {
+bool initialize_SDL(GameResources& gameResources) {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
         printf("SDL_Init error: %s\n", SDL_GetError());
         return false;
     }
 
-    int rc = SDL_CreateWindowAndRenderer(SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT, 0, &window, &renderer);
+    int rc = SDL_CreateWindowAndRenderer(SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT, 0, &gameResources.window, &gameResources.renderer);
     if (rc != 0) {
         SDL_Quit();
         printf("SDL_CreateWindowAndRenderer error: %s\n", SDL_GetError());
@@ -110,15 +128,15 @@ bool initialize_SDL(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Surface*& 
     }
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderSetLogicalSize(gameResources.renderer, SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT);
+    SDL_SetRenderDrawColor(gameResources.renderer, 0, 0, 0, 255);
 
-    SDL_SetWindowTitle(window, "Karol Obrycki index: 203264");
+    SDL_SetWindowTitle(gameResources.window, "Karol Obrycki index: 203264");
 
-    screen = SDL_CreateRGBSurface(0, SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT, 32,
+    gameResources.screen = SDL_CreateRGBSurface(0, SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT, 32,
         0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
 
-    scrtex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+    gameResources.scrtex = SDL_CreateTexture(gameResources.renderer, SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING,
         SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT);
 
@@ -132,6 +150,23 @@ void initialize_snake(Snake& snake) {
         snake.segments[i][0] = SNAKE_X;
         snake.segments[i][1] = SNAKE_Y + i;
     }
+}
+
+void initialize_game_state(GameState& gameState) {
+    gameState.t1 = SDL_GetTicks();
+    gameState.quit = 0;
+    gameState.frames = 0;
+    gameState.points = 0;
+    gameState.delta = 0;
+    gameState.worldTime = 0;
+    gameState.fpsTimer = 0;
+    gameState.fps = 0;
+    gameState.newGameTimer = 0;
+    gameState.snakeTimer = 0;
+    gameState.snakeSpeed = SNAKE_SPEED;
+    gameState.lastSpeedIncreaseTime = 0;
+    gameState.redDotTimer = 0;
+    gameState.gameOver = false;
 }
 
 void initialize_blue_dot(int& x, int& y, Snake& snake) {
@@ -186,7 +221,7 @@ void draw_progress_bar(SDL_Surface* screen, Uint32 color1, Uint32 color2, double
 }
 
 void draw_dot(SDL_Surface* screen, int x, int y, SDL_Surface* dot) {
-	SDL_Rect dotRect;
+    SDL_Rect dotRect;
     dotRect.w = UNIT;
     dotRect.h = UNIT;
     dotRect.x = (x + FIELD_X) * UNIT;
@@ -194,12 +229,12 @@ void draw_dot(SDL_Surface* screen, int x, int y, SDL_Surface* dot) {
     SDL_BlitSurface(dot, NULL, screen, &dotRect);
 }
 
-void draw_dots(SDL_Surface* screen, blueDot& blueDot, redDot& redDot, SDL_Surface* blueDotSurface, SDL_Surface* redDotSurface, Uint32 color1, Uint32 color2, double redDotTimer) {
-    draw_dot(screen, blueDot.x, blueDot.y, blueDotSurface);
-	if (redDot.x != -1) {
-		draw_dot(screen, redDot.x, redDot.y, redDotSurface);
-        draw_progress_bar(screen, color1, color2, redDotTimer);
-	}
+void draw_dots(GameResources& gameResources, blueDot& blueDot, redDot& redDot, double redDotTimer) {
+    draw_dot(gameResources.screen, blueDot.x, blueDot.y, gameResources.blueDotSurface);
+    if (redDot.x != -1) {
+        draw_dot(gameResources.screen, redDot.x, redDot.y, gameResources.redDotSurface);
+        draw_progress_bar(gameResources.screen, gameResources.zielony, gameResources.czerwony, redDotTimer);
+    }
 }
 
 void check_dot_collision(Snake& snake, blueDot& blueDot, redDot& redDot, int& points, double& snakeSpeed, double& redDotTimer) {
@@ -212,7 +247,7 @@ void check_dot_collision(Snake& snake, blueDot& blueDot, redDot& redDot, int& po
 
         points += BLUE_POINTS;
         initialize_blue_dot(blueDot.x, blueDot.y, snake);
-		PlaySound(TEXT("./sound_blue.wav"), NULL, SND_FILENAME | SND_ASYNC);
+        PlaySound(TEXT("./sound_blue.wav"), NULL, SND_FILENAME | SND_ASYNC);
     }
     else if (snake.segments[0][0] == redDot.x && snake.segments[0][1] == redDot.y) {
         points += RED_POINTS;
@@ -292,55 +327,54 @@ void check_snake_bounds(Snake& snake) {
     }
 }
 
-bool load_bmp(SDL_Surface*& charset, SDL_Surface*& redDot, SDL_Surface*& blueDot, SDL_Surface* screen, SDL_Texture* scrtex, SDL_Window* window, SDL_Renderer* renderer) {
-    charset = SDL_LoadBMP("./cs8x8.bmp");
-	redDot = SDL_LoadBMP("./red_dot.bmp");
-	blueDot = SDL_LoadBMP("./blue_dot.bmp");
+bool load_bmp(GameResources& gameResources) {
+    gameResources.charset = SDL_LoadBMP("./cs8x8.bmp");
+    gameResources.redDotSurface = SDL_LoadBMP("./red_dot.bmp");
+    gameResources.blueDotSurface = SDL_LoadBMP("./blue_dot.bmp");
 
-    if (charset == NULL || blueDot == NULL || redDot == NULL) {
+    if (gameResources.charset == NULL || gameResources.blueDotSurface == NULL || gameResources.redDotSurface == NULL) {
         printf("SDL_LoadBMP error: %s\n", SDL_GetError());
-        SDL_FreeSurface(screen);
-        SDL_DestroyTexture(scrtex);
-        SDL_DestroyWindow(window);
-        SDL_DestroyRenderer(renderer);
+        SDL_FreeSurface(gameResources.screen);
+        SDL_DestroyTexture(gameResources.scrtex);
+        SDL_DestroyWindow(gameResources.window);
+        SDL_DestroyRenderer(gameResources.renderer);
         SDL_Quit();
         return false;
     }
 
-    SDL_SetColorKey(charset, true, 0x000000);
-    SDL_SetColorKey(redDot, true, 0x000000);
-    SDL_SetColorKey(blueDot, true, 0x000000);
+    SDL_SetColorKey(gameResources.charset, true, 0x000000);
+    SDL_SetColorKey(gameResources.redDotSurface, true, 0x000000);
+    SDL_SetColorKey(gameResources.blueDotSurface, true, 0x000000);
     return true;
 }
 
-void create_colors(SDL_Surface* screen, Uint32& czarny, Uint32& zielony, Uint32& czerwony, Uint32& niebieski, Uint32& bialy, Uint32& jasny_niebieski, Uint32& fioletowy) {
-    czarny = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
-    zielony = SDL_MapRGB(screen->format, 23, 199, 64);
-    czerwony = SDL_MapRGB(screen->format, 198, 0x00, 0x00);
-    niebieski = SDL_MapRGB(screen->format, 0x11, 0x11, 0xCC);
-    bialy = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
-    jasny_niebieski = SDL_MapRGB(screen->format, 110, 149, 255);
-    fioletowy = SDL_MapRGB(screen->format, 139, 44, 168);
+void create_colors(GameResources& gameResources) {
+    gameResources.czarny = SDL_MapRGB(gameResources.screen->format, 0x00, 0x00, 0x00);
+    gameResources.zielony = SDL_MapRGB(gameResources.screen->format, 23, 199, 64);
+    gameResources.czerwony = SDL_MapRGB(gameResources.screen->format, 198, 0x00, 0x00);
+    gameResources.niebieski = SDL_MapRGB(gameResources.screen->format, 0x11, 0x11, 0xCC);
+    gameResources.bialy = SDL_MapRGB(gameResources.screen->format, 0xFF, 0xFF, 0xFF);
+    gameResources.jasny_niebieski = SDL_MapRGB(gameResources.screen->format, 110, 149, 255);
+    gameResources.fioletowy = SDL_MapRGB(gameResources.screen->format, 139, 44, 168);
 }
 
 void draw_game_field(SDL_Surface* screen, Uint32 color) {
     DrawRectangle(screen, FIELD_X * UNIT, FIELD_Y * UNIT, FIELD_WIDTH * UNIT, FIELD_HEIGHT * UNIT, color, color);
 }
 
-void display_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielony, Uint32 niebieski, double worldTime, double fps, int points) {
+void display_information(GameState& gameState, GameResources& gameResources) {
     char text[128];
-    DrawRectangle(screen, INFO_TEXT_X, INFO_TEXT_Y, INFO_TEXT_WIDTH, INFO_TEXT_HEIGHT, zielony, niebieski);
-    sprintf(text, "Liczba punktow = %d  czas trwania = %.1lf s  %.0lf klatek / s", points, worldTime, fps);
-    DrawString(screen, screen->w / 2 - strlen(text) * 8 / 2, 10, text, charset);
+    DrawRectangle(gameResources.screen, INFO_TEXT_X, INFO_TEXT_Y, INFO_TEXT_WIDTH, INFO_TEXT_HEIGHT, gameResources.zielony, gameResources.niebieski);
+    sprintf(text, "Liczba punktow = %d  czas trwania = %.1lf s  %.0lf klatek / s", gameState.points, gameState.worldTime, gameState.fps);
+    DrawString(gameResources.screen, gameResources.screen->w / 2 - strlen(text) * 8 / 2, 10, text, gameResources.charset);
     sprintf(text, "Esc - wyjscie, 'n' - nowa gra");
-    DrawString(screen, screen->w / 2 - strlen(text) * 8 / 2, 26, text, charset);
+    DrawString(gameResources.screen, gameResources.screen->w / 2 - strlen(text) * 8 / 2, 26, text, gameResources.charset);
     sprintf(text, "Zrealizowane podpunkty: 1.  2.  3.  4.   A  B  C  D");
-    DrawString(screen, screen->w / 2 - strlen(text) * 8 / 2, 42, text, charset);
+    DrawString(gameResources.screen, gameResources.screen->w / 2 - strlen(text) * 8 / 2, 42, text, gameResources.charset);
 }
 
-void lose_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielony, Uint32 niebieski) {
-
-    DrawRectangle(screen, LOSE_INFO_X, LOSE_INFO_Y - 10, LOSE_INFO_WIDTH, LOSE_INFO_HEIGHT, zielony, niebieski);
+void lose_information(GameResources& gameResources) {
+    DrawRectangle(gameResources.screen, LOSE_INFO_X, LOSE_INFO_Y - 10, LOSE_INFO_WIDTH, LOSE_INFO_HEIGHT, gameResources.zielony, gameResources.niebieski);
 
     const char* gameOverText = "GAME OVER";
     const char* infoText = "Wyjscie - Esc, Nowa gra - 'n'";
@@ -348,32 +382,32 @@ void lose_information(SDL_Surface* screen, SDL_Surface* charset, Uint32 zielony,
     int gameOverTextWidth = strlen(gameOverText) * 8;
     int infoTextWidth = strlen(infoText) * 8;
 
-    DrawString(screen, LOSE_INFO_X + (LOSE_INFO_WIDTH - gameOverTextWidth) / 2, LOSE_INFO_Y, gameOverText, charset);
-    DrawString(screen, LOSE_INFO_X + (LOSE_INFO_WIDTH - infoTextWidth) / 2, LOSE_INFO_Y + 20, infoText, charset);
+    DrawString(gameResources.screen, LOSE_INFO_X + (LOSE_INFO_WIDTH - gameOverTextWidth) / 2, LOSE_INFO_Y, gameOverText, gameResources.charset);
+    DrawString(gameResources.screen, LOSE_INFO_X + (LOSE_INFO_WIDTH - infoTextWidth) / 2, LOSE_INFO_Y + 20, infoText, gameResources.charset);
 }
 
-void display_new_game(SDL_Surface* screen, SDL_Surface* charset, double& newGameTimer, double delta) {
-    if (newGameTimer > 0) {
-        DrawString(screen, NEW_GAME_X, NEW_GAME_Y, "New game", charset);
-        newGameTimer -= delta;
+void display_new_game(GameResources& gameResources, GameState& gameState) {
+    if (gameState.newGameTimer > 0) {
+        DrawString(gameResources.screen, NEW_GAME_X, NEW_GAME_Y, "New game", gameResources.charset);
+        gameState.newGameTimer -= gameState.delta;
     }
 }
 
-void reset_game(double& worldTime, int& frames, double& fpsTimer, double& fps, double& newGameTimer, Snake& snake, blueDot& blueDot, redDot& redDot, int& points, double& lastSpeedIncreaseTime, double& snakeSpeed, double& redDotTimer) {
-    worldTime = 0;
-    frames = 0;
-    fpsTimer = 0;
-    fps = 0;
-    points = 0;
-    lastSpeedIncreaseTime = 0;
-    newGameTimer = NEW_GAME_TIME;
-    snakeSpeed = SNAKE_SPEED;
-    redDotTimer = 0;
+void reset_game(GameState& gameState, Snake& snake, blueDot& blueDot, redDot& redDot) {
+    gameState.worldTime = 0;
+    gameState.frames = 0;
+    gameState.fpsTimer = 0;
+    gameState.fps = 0;
+    gameState.points = 0;
+    gameState.lastSpeedIncreaseTime = 0;
+    gameState.newGameTimer = NEW_GAME_TIME;
+    gameState.snakeSpeed = SNAKE_SPEED;
+    gameState.redDotTimer = 0;
     initialize_snake(snake);
     initialize_blue_dot(blueDot.x, blueDot.y, snake);
     if (rand() % 100 < RED_DOT_PERC) {
         initialize_red_dot(redDot.x, redDot.y, snake, blueDot);
-        redDotTimer = 0;
+        gameState.redDotTimer = 0;
     }
     else {
         redDot.x = -1;
@@ -381,39 +415,39 @@ void reset_game(double& worldTime, int& frames, double& fpsTimer, double& fps, d
     }
 }
 
-void update_game_state(int& t1, int& t2, double& delta, double& worldTime, SDL_Surface* screen, Uint32 jasny_niebieski, Uint32 zielony, double& fpsTimer, int& frames, double& fps, bool& gameOver) {
-    t2 = SDL_GetTicks();
+void update_game_state(GameState& gameState, GameResources& gameResources) {
+    gameState.t2 = SDL_GetTicks();
 
-	delta = (t2 - t1) * 0.001; //delta (time between frames) in seconds
-    t1 = t2;
+    gameState.delta = (gameState.t2 - gameState.t1) * 0.001; //delta (time between frames) in seconds
+    gameState.t1 = gameState.t2;
 
-    if (!gameOver) {
-        worldTime += delta;
-        fpsTimer += delta;
+    if (!gameState.gameOver) {
+        gameState.worldTime += gameState.delta;
+        gameState.fpsTimer += gameState.delta;
     }
 
-    SDL_FillRect(screen, NULL, jasny_niebieski);
+    SDL_FillRect(gameResources.screen, NULL, gameResources.jasny_niebieski);
 
-    draw_game_field(screen, zielony);
+    draw_game_field(gameResources.screen, gameResources.zielony);
 
-    if (fpsTimer > 0.5) {
-        fps = frames * 2;
-        frames = 0;
-        fpsTimer -= 0.5;
+    if (gameState.fpsTimer > 0.5) {
+        gameState.fps = gameState.frames * 2;
+        gameState.frames = 0;
+        gameState.fpsTimer -= 0.5;
     }
 }
 
-void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_Surface* screen, Uint32 color, blueDot& blueDot, redDot& redDot, int& points, double& snakeSpeed, double& worldTime, double& lastSpeedIncreaseTime, double& redDotTimer) {
-    snakeTimer += delta * snakeSpeed;
-    redDotTimer += delta;
+void update_and_draw_snake(Snake& snake, GameResources& gameResources, blueDot& blueDot, redDot& redDot, GameState& gameState) {
+    gameState.snakeTimer += gameState.delta * gameState.snakeSpeed;
+    gameState.redDotTimer += gameState.delta;
 
-    if (worldTime - lastSpeedIncreaseTime >= GAME_SPEED_TIME) {
-        snakeSpeed *= (100.0 + GAME_SPEED) / 100.0;
-        lastSpeedIncreaseTime = worldTime;
+    if (gameState.worldTime - gameState.lastSpeedIncreaseTime >= GAME_SPEED_TIME) {
+        gameState.snakeSpeed *= (100.0 + GAME_SPEED) / 100.0;
+        gameState.lastSpeedIncreaseTime = gameState.worldTime;
     }
 
-    if (redDotTimer >= RED_DOT_TIME) {
-        redDotTimer = 0;
+    if (gameState.redDotTimer >= RED_DOT_TIME) {
+        gameState.redDotTimer = 0;
         if (rand() % 100 < RED_DOT_PERC) {
             initialize_red_dot(redDot.x, redDot.y, snake, blueDot);
         }
@@ -423,8 +457,8 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
         }
     }
 
-    if (snakeTimer >= 1.0) {
-        snakeTimer = 0;
+    if (gameState.snakeTimer >= 1.0) {
+        gameState.snakeTimer = 0;
 
         // Przesuniêcie segmentów cia³a
         for (int i = snake.length - 1; i > 0; i--) {
@@ -451,12 +485,12 @@ void update_and_draw_snake(Snake& snake, double& snakeTimer, double delta, SDL_S
             break;
         }
 
-        check_dot_collision(snake, blueDot, redDot, points, snakeSpeed, redDotTimer);
+        check_dot_collision(snake, blueDot, redDot, gameState.points, gameState.snakeSpeed, gameState.redDotTimer);
     }
 
     // Rysowanie segmentów cia³a wê¿a na powierzchni
     for (int i = 0; i < snake.length; i++) {
-        DrawRectangle(screen, snake.segments[i][0] * UNIT + FIELD_X * UNIT, snake.segments[i][1] * UNIT + FIELD_Y * UNIT, UNIT, UNIT, color, color);
+        DrawRectangle(gameResources.screen, snake.segments[i][0] * UNIT + FIELD_X * UNIT, snake.segments[i][1] * UNIT + FIELD_Y * UNIT, UNIT, UNIT, gameResources.fioletowy, gameResources.fioletowy);
     }
 }
 
@@ -475,98 +509,88 @@ extern "C"
 
 int main(int argc, char** argv) {
     srand(time(NULL));
-    int t1, t2, quit = 0, frames = 0, points = 0;
-    double delta, worldTime = 0, fpsTimer = 0, fps = 0, newGameTimer = 0, snakeTimer = 0, snakeSpeed = SNAKE_SPEED, lastSpeedIncreaseTime = 0, redDotTimer = 0;
-    Uint32 czarny, zielony, czerwony, niebieski, bialy, jasny_niebieski, fioletowy;
-    SDL_Event event;
-    SDL_Window* window;
-    SDL_Renderer* renderer;
-    SDL_Surface* screen;
-    SDL_Surface* charset;
-	SDL_Surface* blueDotSurface;
-	SDL_Surface* redDotSurface;
-    SDL_Texture* scrtex;
+    GameState gameState;
+    GameResources gameResources;
     Snake snake;
-	blueDot blueDot;
+    blueDot blueDot;
     redDot redDot;
-    bool gameOver = false;
 
     printf("SKIBIDI\n");
 
-    if (!initialize_SDL(window, renderer, screen, scrtex)) {
+    if (!initialize_SDL(gameResources)) {
         return 1;
     }
 
-    if (!load_bmp(charset, redDotSurface, blueDotSurface, screen, scrtex, window, renderer)) {
+    if (!load_bmp(gameResources)) {
         return 1;
     }
 
-    create_colors(screen, czarny, zielony, czerwony, niebieski, bialy, jasny_niebieski, fioletowy);
+    create_colors(gameResources);
 
-    t1 = SDL_GetTicks();
+    initialize_game_state(gameState);
 
     initialize_snake(snake);
-    initialize_dots(blueDot, redDot, snake, redDotTimer);
+    initialize_dots(blueDot, redDot, snake, gameState.redDotTimer);
 
-    while (!quit) {
-        update_game_state(t1, t2, delta, worldTime, screen, jasny_niebieski, zielony, fpsTimer, frames, fps, gameOver);
+    while (!gameState.quit) {
+        update_game_state(gameState, gameResources);
 
-        if (!gameOver) {
-            update_and_draw_snake(snake, snakeTimer, delta, screen, fioletowy, blueDot, redDot, points, snakeSpeed, worldTime, lastSpeedIncreaseTime, redDotTimer);
-            draw_dots(screen, blueDot, redDot, blueDotSurface, redDotSurface, niebieski, czerwony, redDotTimer);
-            snake_collision(snake, gameOver);
+        if (!gameState.gameOver) {
+            update_and_draw_snake(snake, gameResources, blueDot, redDot, gameState);
+            draw_dots(gameResources, blueDot, redDot, gameState.redDotTimer);
+            snake_collision(snake, gameState.gameOver);
         }
         else {
-            lose_information(screen, charset, zielony, niebieski);
+            lose_information(gameResources);
         }
 
-        display_new_game(screen, charset, newGameTimer, delta);
+        display_new_game(gameResources, gameState);
 
         // Tekst informacyjny
-        display_information(screen, charset, zielony, niebieski, worldTime, fps, points);
+        display_information(gameState, gameResources);
 
-        SDL_UpdateTexture(scrtex, NULL, screen->pixels, screen->pitch);
-        SDL_RenderCopy(renderer, scrtex, NULL, NULL);
-        SDL_RenderPresent(renderer);
+        SDL_UpdateTexture(gameResources.scrtex, NULL, gameResources.screen->pixels, gameResources.screen->pitch);
+        SDL_RenderCopy(gameResources.renderer, gameResources.scrtex, NULL, NULL);
+        SDL_RenderPresent(gameResources.renderer);
 
         // Obs³uga zdarzeñ
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
+        while (SDL_PollEvent(&gameResources.event)) {
+            switch (gameResources.event.type) {
             case SDL_KEYDOWN:
-                if (event.key.keysym.sym == SDLK_ESCAPE)
-                    quit = 1;
-                else if (event.key.keysym.sym == SDLK_UP && snake.direction != DOWN && snake.segments[0][1] - 1 >= 0) {
-                        snake.direction = UP;
+                if (gameResources.event.key.keysym.sym == SDLK_ESCAPE)
+                    gameState.quit = 1;
+                else if (gameResources.event.key.keysym.sym == SDLK_UP && snake.direction != DOWN && snake.segments[0][1] - 1 >= 0) {
+                    snake.direction = UP;
                 }
-                else if (event.key.keysym.sym == SDLK_DOWN && snake.direction != UP && snake.segments[0][1] + 1 < FIELD_HEIGHT) {
-                        snake.direction = DOWN;
+                else if (gameResources.event.key.keysym.sym == SDLK_DOWN && snake.direction != UP && snake.segments[0][1] + 1 < FIELD_HEIGHT) {
+                    snake.direction = DOWN;
                 }
-                else if (event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT && snake.segments[0][0] - 1 >= 0) {
-                        snake.direction = LEFT;
+                else if (gameResources.event.key.keysym.sym == SDLK_LEFT && snake.direction != RIGHT && snake.segments[0][0] - 1 >= 0) {
+                    snake.direction = LEFT;
                 }
-                else if (event.key.keysym.sym == SDLK_RIGHT && snake.direction != LEFT && snake.segments[0][0] + 1 < FIELD_WIDTH) {
-                        snake.direction = RIGHT;
+                else if (gameResources.event.key.keysym.sym == SDLK_RIGHT && snake.direction != LEFT && snake.segments[0][0] + 1 < FIELD_WIDTH) {
+                    snake.direction = RIGHT;
                 }
-                else if (event.key.keysym.sym == SDLK_n) {
-                    gameOver = false;
-                    reset_game(worldTime, frames, fpsTimer, fps, newGameTimer, snake, blueDot, redDot, points, lastSpeedIncreaseTime, snakeSpeed, redDotTimer);
+                else if (gameResources.event.key.keysym.sym == SDLK_n) {
+                    gameState.gameOver = false;
+                    reset_game(gameState, snake, blueDot, redDot);
                 }
                 break;
             case SDL_QUIT:
-                quit = 1;
+                gameState.quit = 1;
                 break;
             }
         }
 
-        frames++;
+        gameState.frames++;
     }
 
     // zwolnienie powierzchni / freeing all surfaces
-    SDL_FreeSurface(charset);
-    SDL_FreeSurface(screen);
-    SDL_DestroyTexture(scrtex);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+    SDL_FreeSurface(gameResources.charset);
+    SDL_FreeSurface(gameResources.screen);
+    SDL_DestroyTexture(gameResources.scrtex);
+    SDL_DestroyRenderer(gameResources.renderer);
+    SDL_DestroyWindow(gameResources.window);
 
     SDL_Quit();
     return 0;
