@@ -86,7 +86,7 @@ struct GameState {
 };
 
 struct GameResources {
-    Uint32 czarny, zielony, czerwony, niebieski, bialy, jasny_niebieski, fioletowy;
+    Uint32 czarny, zielony, czerwony, niebieski, bialy, jasny_niebieski, fioletowy, granatowy;
     SDL_Event event;
     SDL_Window* window;
     SDL_Renderer* renderer;
@@ -249,6 +249,7 @@ void create_colors(GameResources& gameResources) {
     gameResources.bialy = SDL_MapRGB(gameResources.screen->format, 0xFF, 0xFF, 0xFF);
     gameResources.jasny_niebieski = SDL_MapRGB(gameResources.screen->format, 110, 149, 255);
     gameResources.fioletowy = SDL_MapRGB(gameResources.screen->format, 139, 44, 168);
+    gameResources.granatowy = SDL_MapRGB(gameResources.screen->format, 0x00, 0x00, 0x80);
 }
 
 
@@ -276,9 +277,60 @@ void draw_dots(GameResources& gameResources, blueDot& blueDot, redDot& redDot, d
     }
 }
 
+void draw_snake_eyes(int x, int y, Direction direction, GameResources& gameResources) {
+    int eyeSize = UNIT / 5;
+    int eyeOffsetX = UNIT / 4;
+    int eyeOffsetY = UNIT / 4;
+    int leftEyeX, leftEyeY, rightEyeX, rightEyeY;
+
+    switch (direction) {
+    case UP:
+        leftEyeX = x * UNIT + FIELD_X * UNIT + eyeOffsetX;
+        leftEyeY = y * UNIT + FIELD_Y * UNIT + eyeOffsetY;
+        rightEyeX = x * UNIT + FIELD_X * UNIT + UNIT - eyeOffsetX - eyeSize;
+        rightEyeY = y * UNIT + FIELD_Y * UNIT + eyeOffsetY;
+        break;
+    case DOWN:
+        rightEyeX = x * UNIT + FIELD_X * UNIT + eyeOffsetX;
+        rightEyeY = y * UNIT + FIELD_Y * UNIT + UNIT - eyeOffsetY - eyeSize;
+        leftEyeX = x * UNIT + FIELD_X * UNIT + UNIT - eyeOffsetX - eyeSize;
+        leftEyeY = y * UNIT + FIELD_Y * UNIT + UNIT - eyeOffsetY - eyeSize;
+        break;
+    case LEFT:
+        rightEyeX = x * UNIT + FIELD_X * UNIT + eyeOffsetX;
+        rightEyeY = y * UNIT + FIELD_Y * UNIT + eyeOffsetY;
+        leftEyeX = x * UNIT + FIELD_X * UNIT + eyeOffsetX;
+        leftEyeY = y * UNIT + FIELD_Y * UNIT + UNIT - eyeOffsetY - eyeSize;
+        break;
+    case RIGHT:
+        leftEyeX = x * UNIT + FIELD_X * UNIT + UNIT - eyeOffsetX - eyeSize;
+        leftEyeY = y * UNIT + FIELD_Y * UNIT + eyeOffsetY;
+        rightEyeX = x * UNIT + FIELD_X * UNIT + UNIT - eyeOffsetX - eyeSize;
+        rightEyeY = y * UNIT + FIELD_Y * UNIT + UNIT - eyeOffsetY - eyeSize;
+        break;
+    }
+
+    //Left eye
+    DrawRectangle(gameResources.screen, leftEyeX, leftEyeY, eyeSize, eyeSize, gameResources.bialy, gameResources.bialy);
+    //Right eye
+    DrawRectangle(gameResources.screen, rightEyeX, rightEyeY, eyeSize, eyeSize, gameResources.bialy, gameResources.bialy);
+}
+
 void draw_snake(Snake& snake, GameResources& gameResources) {
     for (int i = 0; i < snake.length; i++) {
-        DrawRectangle(gameResources.screen, snake.segments[i][0] * UNIT + FIELD_X * UNIT, snake.segments[i][1] * UNIT + FIELD_Y * UNIT, UNIT, UNIT, gameResources.fioletowy, gameResources.fioletowy);
+        Uint32 color;
+        if (i == 0) {
+			color = gameResources.granatowy;
+        }
+        else {
+			color = gameResources.fioletowy;
+        }
+        DrawRectangle(gameResources.screen, snake.segments[i][0] * UNIT + FIELD_X * UNIT, snake.segments[i][1] * UNIT + FIELD_Y * UNIT, UNIT, UNIT, color, color);
+
+        //Adding snake eyes
+        if (i == 0) {
+            draw_snake_eyes(snake.segments[i][0], snake.segments[i][1], snake.direction, gameResources);
+        }
     }
 }
 
