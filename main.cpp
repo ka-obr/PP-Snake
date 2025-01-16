@@ -449,8 +449,8 @@ void display_information(GameState& gameState, GameResources& gameResources) {
 void lose_information(GameResources& gameResources) {
     DrawRectangle(gameResources.screen, LOSE_INFO_X, LOSE_INFO_Y - 10, LOSE_INFO_WIDTH, LOSE_INFO_HEIGHT, gameResources.zielony, gameResources.niebieski);
 
-    const char* gameOverText = "GAME OVER";
-    const char* infoText = "Wyjscie - Esc, Nowa gra - 'n'";
+    char* gameOverText = "GAME OVER";
+    char* infoText = "Wyjscie - Esc, Nowa gra - 'n'";
 
 	//8 pixels per character
     int gameOverTextWidth = strlen(gameOverText) * 8;
@@ -639,13 +639,9 @@ int main(int argc, char** argv) {
 
     printf("SKIBIDI\n");
 
-    if (!initialize_SDL(gameResources)) {
-        return 1;
-    }
+    initialize_SDL(gameResources);
 
-    if (!load_bmp(gameResources)) {
-        return 1;
-    }
+    load_bmp(gameResources);
 
     create_colors(gameResources);
 
@@ -677,7 +673,7 @@ int main(int argc, char** argv) {
         gameState.frames++;
     }
 
-    // zwolnienie powierzchni / freeing all surfaces
+    //freeing all surfaces
     SDL_FreeSurface(gameResources.charset);
     SDL_FreeSurface(gameResources.screen);
     SDL_DestroyTexture(gameResources.scrtex);
