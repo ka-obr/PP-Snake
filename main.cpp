@@ -449,8 +449,8 @@ void display_information(GameState& gameState, GameResources& gameResources) {
 void lose_information(GameResources& gameResources) {
     DrawRectangle(gameResources.screen, LOSE_INFO_X, LOSE_INFO_Y - 10, LOSE_INFO_WIDTH, LOSE_INFO_HEIGHT, gameResources.zielony, gameResources.niebieski);
 
-    char* gameOverText = "GAME OVER";
-    char* infoText = "Wyjscie - Esc, Nowa gra - 'n'";
+    const char* gameOverText = "GAME OVER";
+    const char* infoText = "Wyjscie - Esc, Nowa gra - 'n'";
 
 	//8 pixels per character
     int gameOverTextWidth = strlen(gameOverText) * 8;
