@@ -58,7 +58,7 @@ extern "C" {
 #define PROGRESS_BAR_WIDTH 200
 #define PROGRESS_BAR_HEIGHT 25
 
-//Points for blue & red dot dot
+//Points for blue & red dot
 #define BLUE_POINTS 2
 #define RED_POINTS 5
 
@@ -116,17 +116,15 @@ struct redDot {
 
 
 //initialize functions
-bool initialize_SDL(GameResources& gameResources) {
+void initialize_SDL(GameResources& gameResources) {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
         printf("SDL_Init error: %s\n", SDL_GetError());
-        return false;
     }
 
     int rc = SDL_CreateWindowAndRenderer(SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT, 0, &gameResources.window, &gameResources.renderer);
     if (rc != 0) {
         SDL_Quit();
         printf("SDL_CreateWindowAndRenderer error: %s\n", SDL_GetError());
-        return false;
     }
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
@@ -142,7 +140,6 @@ bool initialize_SDL(GameResources& gameResources) {
         SDL_TEXTUREACCESS_STREAMING,
         SCREEN_WIDTH * UNIT, SCREEN_HEIGHT * UNIT);
 
-    return true;
 }
 
 void initialize_snake(Snake& snake) {
@@ -203,6 +200,7 @@ void initialize_red_dot(int& x, int& y, Snake& snake, blueDot& blueDot) {
             }
         }
         if (x == blueDot.x && y == blueDot.y) {
+            //is there a blue dot on the red dot position
             validPosition = false;
         }
     } while (!validPosition);
@@ -220,7 +218,7 @@ void initialize_dots(blueDot& blueDot, redDot& redDot, Snake& snake, double& red
     }
 }
 
-bool load_bmp(GameResources& gameResources) {
+void load_bmp(GameResources& gameResources) {
     gameResources.charset = SDL_LoadBMP("./cs8x8.bmp");
     gameResources.redDotSurface = SDL_LoadBMP("./red_dot.bmp");
     gameResources.blueDotSurface = SDL_LoadBMP("./blue_dot.bmp");
@@ -232,13 +230,11 @@ bool load_bmp(GameResources& gameResources) {
         SDL_DestroyWindow(gameResources.window);
         SDL_DestroyRenderer(gameResources.renderer);
         SDL_Quit();
-        return false;
     }
 
     SDL_SetColorKey(gameResources.charset, true, 0x000000);
     SDL_SetColorKey(gameResources.redDotSurface, true, 0x000000);
     SDL_SetColorKey(gameResources.blueDotSurface, true, 0x000000);
-    return true;
 }
 
 void create_colors(GameResources& gameResources) {
@@ -319,7 +315,7 @@ void draw_snake_eyes(int x, int y, Direction direction, GameResources& gameResou
 void draw_snake(Snake& snake, GameResources& gameResources) {
     for (int i = 0; i < snake.length; i++) {
         Uint32 color;
-        if (i == 0) {
+        if (i == 0) { //color for snake head
 			color = gameResources.granatowy;
         }
         else {
@@ -637,8 +633,6 @@ int main(int argc, char** argv) {
     blueDot blueDot;
     redDot redDot;
 
-    printf("SKIBIDI\n");
-
     initialize_SDL(gameResources);
 
     load_bmp(gameResources);
@@ -646,7 +640,6 @@ int main(int argc, char** argv) {
     create_colors(gameResources);
 
     initialize_game_state(gameState);
-
     initialize_snake(snake);
     initialize_dots(blueDot, redDot, snake, gameState.redDotTimer);
 
