@@ -31,7 +31,7 @@ extern "C" {
 //Snake defines in units
 #define SNAKE_LENGTH 7
 #define MAX_SNAKE_LENGTH 100
-#define SNAKE_SPEED 3.0 //Snake speed in units per second
+#define SNAKE_SPEED 5.0 //Snake speed in units per second
 #define SNAKE_X 12
 #define SNAKE_Y 10
 
@@ -371,18 +371,22 @@ void check_dot_collision(Snake& snake, blueDot& blueDot, redDot& redDot, int& po
     }
 }
 
-void turn_snake_right(Snake& snake) {
+void turn_snake_right(Snake& snake, GameState& gameState) {
     switch (snake.direction) {
     case UP:
+        gameState.points--;
         snake.direction = RIGHT;
         break;
     case RIGHT:
+        gameState.points--;
         snake.direction = DOWN;
         break;
     case DOWN:
+        gameState.points--;
         snake.direction = LEFT;
         break;
     case LEFT:
+        gameState.points--;
         snake.direction = UP;
         break;
     }
@@ -405,7 +409,7 @@ void turn_snake_left(Snake& snake) {
     }
 }
 
-bool will_hit_wall(Snake& snake) {
+bool will_hit_wall(Snake& snake, GameState& GameState) {
     switch (snake.direction) {
     case UP:
         return snake.segments[0][1] - 1 < 0;
@@ -419,10 +423,10 @@ bool will_hit_wall(Snake& snake) {
     return false;
 }
 
-void check_snake_bounds(Snake& snake) {
-    if (will_hit_wall(snake)) {
-        turn_snake_right(snake);
-        if (will_hit_wall(snake)) {
+void check_snake_bounds(Snake& snake, GameState& GameState) {
+    if (will_hit_wall(snake, GameState)) {
+        turn_snake_right(snake, GameState);
+        if (will_hit_wall(snake, GameState)) {
             turn_snake_left(snake);
             turn_snake_left(snake);
         }
@@ -552,7 +556,7 @@ void move_snake(Snake& snake, GameState& gameState, blueDot& blueDot, redDot& re
         }
 
         //Checking borders for snake
-        check_snake_bounds(snake);
+        check_snake_bounds(snake, gameState);
 
         //Uploading snake head position
         switch (snake.direction) {
